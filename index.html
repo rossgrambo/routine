@@ -76,6 +76,10 @@
                 <div class="schedule-list" id="scheduleList">
                     <!-- Schedule items will be populated here -->
                 </div>
+                <div class="import-export-actions">
+                    <button class="export-btn" id="exportBtn">Export</button>
+                    <button class="import-btn" id="importBtn">Import</button>
+                </div>
             </div>
         </div>
 
@@ -180,6 +184,26 @@
                         <button type="submit" class="btn-primary">Save</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for import/export -->
+    <div class="modal" id="importExportModal">
+        <div class="modal-content import-export-modal">
+            <div class="modal-header">
+                <h3 id="importExportTitle">Export Data</h3>
+                <button class="close-modal" id="closeImportExportModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="jsonData">JSON Data</label>
+                    <textarea id="jsonData" class="json-textarea" placeholder="Paste JSON data here for import..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelImportExport">Cancel</button>
+                    <button type="button" class="btn-primary" id="importExportAction">Copy</button>
+                </div>
             </div>
         </div>
     </div>

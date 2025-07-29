@@ -487,6 +487,68 @@ body {
     cursor: not-allowed;
 }
 
+/* Import/Export Actions */
+.import-export-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.export-btn, .import-btn {
+    background: var(--secondary-color);
+    color: var(--text-color);
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 500;
+    -webkit-appearance: none; /* Remove Safari's default button styling */
+    appearance: none; /* Standard property for compatibility */
+    -webkit-tap-highlight-color: transparent; /* Remove tap highlight on iOS */
+    touch-action: manipulation; /* Improve touch responsiveness */
+    min-height: 44px; /* Ensure minimum touch target size for iOS */
+    min-width: 44px;
+}
+
+.export-btn:hover, .export-btn:focus {
+    background: #f39c12;
+    transform: translateY(-2px);
+    outline: none;
+}
+
+.import-btn {
+    background: var(--primary-color);
+    color: white;
+}
+
+.import-btn:hover, .import-btn:focus {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    outline: none;
+}
+
+/* Touch-specific improvements for mobile */
+@media (hover: none) and (pointer: coarse) {
+    .export-btn:hover, .import-btn:hover {
+        transform: none; /* Disable hover transforms on touch devices */
+    }
+    
+    .export-btn:active {
+        background: #f39c12;
+        transform: scale(0.98);
+    }
+    
+    .import-btn:active {
+        background: var(--primary-dark);
+        transform: scale(0.98);
+    }
+}
+
 /* Settings Screen */
 .settings-container {
     max-width: 600px;
@@ -555,6 +617,27 @@ body {
     overflow-y: auto;
     animation: modalSlideIn 0.3s ease;
     color: white;
+    /* Safari mobile fixes */
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    transform: translate3d(0, 0, 0); /* Force hardware acceleration */
+}
+
+.import-export-modal {
+    max-width: 700px;
+    max-height: 80%;
+}
+
+/* Additional Safari mobile modal fixes */
+@supports (-webkit-touch-callout: none) {
+    .modal-content {
+        /* Specific fixes for Safari */
+        position: relative;
+        min-height: 200px;
+    }
+    
+    .import-export-modal .modal-content {
+        max-height: 85vh; /* Better viewport handling on Safari */
+    }
 }
 
 @keyframes modalSlideIn {
@@ -608,7 +691,8 @@ body {
 
 .form-group input[type="text"],
 .form-group input[type="time"],
-.form-group input[type="datetime-local"] {
+.form-group input[type="datetime-local"],
+.form-group textarea {
     width: 100%;
     padding: 12px;
     border: 1px solid rgba(255,255,255,0.3);
@@ -619,7 +703,33 @@ body {
     color: white;
 }
 
-.form-group input:focus {
+.json-textarea {
+    min-height: 300px;
+    resize: vertical;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    /* Safari mobile improvements */
+    -webkit-appearance: none;
+    appearance: none;
+    -webkit-text-size-adjust: 100%; /* Prevent text zoom on iOS */
+    touch-action: manipulation;
+    /* Improve readability on small screens */
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+/* Safari mobile specific textarea fixes */
+@supports (-webkit-touch-callout: none) {
+    .json-textarea {
+        /* Better mobile experience on Safari */
+        font-size: 14px; /* Prevents zoom on focus in Safari iOS */
+        min-height: 250px; /* Slightly smaller on mobile */
+    }
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
     outline: none;
     border-color: #3498db;
     background: rgba(255,255,255,0.15);
@@ -658,7 +768,8 @@ body {
 }
 
 /* Placeholder text styling for dark inputs */
-.form-group input::placeholder {
+.form-group input::placeholder,
+.form-group textarea::placeholder {
     color: rgba(255,255,255,0.6);
 }
 
@@ -725,29 +836,6 @@ body {
     
     .btn-primary, .btn-secondary, .btn-danger {
         width: 100%;
-    }
-}
-
-@media (max-width: 480px) {
-    .container {
-        padding: 10px;
-    }
-    
-    .activity-card {
-        padding: 30px 20px;
-        margin: 10px;
-    }
-    
-    .activity-title {
-        font-size: 1.6rem;
-    }
-    
-    .done-btn {
-        font-size: 1.3rem;
-    }
-    
-    .modal-content {
-        width: 95%;
     }
 }
 

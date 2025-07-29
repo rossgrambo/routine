@@ -7,6 +7,7 @@ class DailyProcessApp {
         this.history = [];
         this.currentEditingActivity = null;
         this.currentEditingHistory = null;
+        this.currentImportExportMode = null;
         
         this.init();
     }
@@ -444,6 +445,60 @@ class DailyProcessApp {
         });
 
         deleteHistoryEntry.addEventListener('click', () => this.deleteHistoryEntry());
+
+        // Import/Export Modal
+        const importExportModal = document.getElementById('importExportModal');
+        const closeImportExportModal = document.getElementById('closeImportExportModal');
+        const cancelImportExport = document.getElementById('cancelImportExport');
+        const importExportAction = document.getElementById('importExportAction');
+        const exportBtn = document.getElementById('exportBtn');
+        const importBtn = document.getElementById('importBtn');
+
+        // Verify elements exist before adding listeners
+        if (!exportBtn || !importBtn) {
+            console.error('Export or Import buttons not found in DOM');
+            return;
+        }
+
+        closeImportExportModal.addEventListener('click', () => this.closeModal('importExportModal'));
+        cancelImportExport.addEventListener('click', () => this.closeModal('importExportModal'));
+        importExportModal.addEventListener('click', (e) => {
+            if (e.target === importExportModal) this.closeModal('importExportModal');
+        });
+
+        exportBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Export button click event fired'); // Debug log
+            this.showExportModal();
+        });
+        importBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Import button click event fired'); // Debug log
+            this.showImportModal();
+        });
+        importExportAction.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.handleImportExportAction();
+        });
+        
+        // Add touch event handlers for better Safari mobile support
+        exportBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            console.log('Export button touchend event fired'); // Debug log
+            this.showExportModal();
+        });
+        importBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            console.log('Import button touchend event fired'); // Debug log
+            this.showImportModal();
+        });
+        importExportAction.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            this.handleImportExportAction();
+        });
     }
 
     // Navigation
@@ -817,15 +872,255 @@ class DailyProcessApp {
         }
     }
 
+    // Import/Export Functionality
+    showExportModal() {
+        console.log('Export button clicked'); // Debug log
+        this.currentImportExportMode = 'export';
+        const jsonData = this.exportActivitiesToJson();
+        
+        document.getElementById('importExportTitle').textContent = 'Export Activities';
+        document.getElementById('jsonData').value = jsonData;
+        document.getElementById('jsonData').readOnly = true;
+        document.getElementById('importExportAction').textContent = 'Copy';
+        
+        this.showModal('importExportModal');
+    }
+
+    showImportModal() {
+        console.log('Import button clicked'); // Debug log
+        this.currentImportExportMode = 'import';
+        
+        document.getElementById('importExportTitle').textContent = 'Import Activities';
+        document.getElementById('jsonData').value = '';
+        document.getElementById('jsonData').readOnly = false;
+        document.getElementById('importExportAction').textContent = 'Import';
+        
+        this.showModal('importExportModal');
+    }
+
+    exportActivitiesToJson() {
+        // Create a simplified representation of activities
+        const exportData = this.activities.map(activity => {
+            const exportActivity = {};
+            
+            // Always include name
+            if (activity.name) exportActivity.name = activity.name;
+            
+            // Include days if present
+            if (activity.days && activity.days.length > 0) {
+                exportActivity.days = activity.days;
+            }
+            
+            // Include time if present
+            if (activity.time) exportActivity.time = activity.time;
+            
+            // Include locked status if it's different from default (false)
+            if (activity.locked) exportActivity.locked = activity.locked;
+            
+            // Include any other properties dynamically
+            Object.keys(activity).forEach(key => {
+                if (!['id', 'name', 'days', 'time', 'locked'].includes(key)) {
+                    exportActivity[key] = activity[key];
+                }
+            });
+            
+            return exportActivity;
+        });
+        
+        return JSON.stringify(exportData, null, 2);
+    }
+
+    handleImportExportAction() {
+        try {
+            if (this.currentImportExportMode === 'export') {
+                this.copyToClipboard();
+            } else if (this.currentImportExportMode === 'import') {
+                this.importActivitiesFromJson();
+            }
+        } catch (error) {
+            console.error('Error in import/export action:', error);
+            alert('An error occurred. Please try again.');
+        }
+    }
+
+    async copyToClipboard() {
+        const jsonData = document.getElementById('jsonData').value;
+        
+        try {
+            // Check if clipboard API is available
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(jsonData);
+                this.showCopyFeedback();
+            } else {
+                // Fallback for Safari and other browsers
+                this.fallbackCopyToClipboard(jsonData);
+            }
+            
+        } catch (err) {
+            console.log('Clipboard API failed, trying fallback', err);
+            // Fallback for older browsers or when clipboard API fails
+            this.fallbackCopyToClipboard(jsonData);
+        }
+    }
+    
+    fallbackCopyToClipboard(text) {
+        // Create a temporary textarea element
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-999999px';
+        textarea.style.top = '-999999px';
+        document.body.appendChild(textarea);
+        
+        // Focus and select the text
+        textarea.focus();
+        textarea.select();
+        textarea.setSelectionRange(0, 99999); // For mobile devices
+        
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                this.showCopyFeedback();
+            } else {
+                this.showManualCopyModal(text);
+            }
+        } catch (err) {
+            console.log('execCommand failed', err);
+            this.showManualCopyModal(text);
+        } finally {
+            document.body.removeChild(textarea);
+        }
+    }
+    
+    showCopyFeedback() {
+        // Provide visual feedback
+        const button = document.getElementById('importExportAction');
+        const originalText = button.textContent;
+        button.textContent = 'Copied!';
+        button.style.background = '#4CAF50';
+        
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.style.background = '';
+        }, 2000);
+    }
+    
+    showManualCopyModal(text) {
+        // If automated copy fails, show manual copy instructions
+        alert('Unable to copy automatically. Please manually select and copy the text from the text area.');
+        
+        // Re-select the text in the textarea for manual copying
+        const textarea = document.getElementById('jsonData');
+        textarea.focus();
+        textarea.select();
+        textarea.setSelectionRange(0, 99999);
+    }
+
+    importActivitiesFromJson() {
+        const jsonData = document.getElementById('jsonData').value.trim();
+        
+        if (!jsonData) {
+            alert('Please paste JSON data to import.');
+            return;
+        }
+        
+        try {
+            const importedData = JSON.parse(jsonData);
+            
+            if (!Array.isArray(importedData)) {
+                throw new Error('JSON data must be an array of activities');
+            }
+            
+            // Validate the imported data
+            const validatedActivities = this.validateImportedActivities(importedData);
+            
+            if (confirm(`This will replace all ${this.activities.length} existing activities with ${validatedActivities.length} imported activities. Are you sure?`)) {
+                this.activities = validatedActivities;
+                this.currentActivityIndex = 0; // Reset to first activity
+                this.saveData();
+                this.renderSchedule();
+                this.closeModal('importExportModal');
+                alert('Activities imported successfully!');
+            }
+            
+        } catch (error) {
+            alert(`Error importing JSON data: ${error.message}`);
+        }
+    }
+
+    validateImportedActivities(importedData) {
+        return importedData.map((activity, index) => {
+            const validatedActivity = {
+                id: Date.now() + index, // Generate new IDs
+                name: activity.name || `Activity ${index + 1}`, // Default name if missing
+                days: activity.days || ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], // Default to all days
+                time: activity.time || '', // Default to empty time
+                locked: activity.locked || false // Default to unlocked
+            };
+            
+            // Validate days array
+            if (Array.isArray(validatedActivity.days)) {
+                const validDays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+                validatedActivity.days = validatedActivity.days.filter(day => validDays.includes(day));
+                
+                // If no valid days remain, default to all days
+                if (validatedActivity.days.length === 0) {
+                    validatedActivity.days = validDays;
+                }
+            } else {
+                validatedActivity.days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+            }
+            
+            // Copy any additional properties dynamically
+            Object.keys(activity).forEach(key => {
+                if (!['id', 'name', 'days', 'time', 'locked'].includes(key)) {
+                    validatedActivity[key] = activity[key];
+                }
+            });
+            
+            return validatedActivity;
+        });
+    }
+
     // Modal Management
     showModal(modalId) {
-        document.getElementById(modalId).classList.add('show');
+        const modal = document.getElementById(modalId);
+        modal.classList.add('show');
         document.body.style.overflow = 'hidden';
+        
+        // Fix for Safari mobile viewport issues
+        if (modalId === 'importExportModal') {
+            // Ensure the modal is fully visible on mobile Safari
+            setTimeout(() => {
+                const modalContent = modal.querySelector('.modal-content');
+                if (modalContent) {
+                    modalContent.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
+        }
+        
+        // Add escape key handling
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                this.closeModal(modalId);
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
     }
 
     closeModal(modalId) {
-        document.getElementById(modalId).classList.remove('show');
+        const modal = document.getElementById(modalId);
+        modal.classList.remove('show');
         document.body.style.overflow = '';
+        
+        // Reset any form states when closing
+        if (modalId === 'importExportModal') {
+            const jsonTextarea = document.getElementById('jsonData');
+            if (jsonTextarea) {
+                jsonTextarea.blur(); // Remove focus to hide keyboard on mobile
+            }
+        }
     }
 
     closeAllModals() {
