@@ -1,0 +1,35 @@
+{
+  "name": "daily-process",
+  "version": "1.0.0",
+  "description": "A simple daily routine management app",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "serve": "python -m http.server 8000",
+    "capacitor:init": "npx cap init",
+    "capacitor:add-ios": "npx cap add ios",
+    "capacitor:add-android": "npx cap add android",
+    "capacitor:sync": "npx cap sync",
+    "capacitor:copy": "npx cap copy",
+    "capacitor:open-ios": "npx cap open ios",
+    "capacitor:open-android": "npx cap open android",
+    "build:capacitor": "npm run capacitor:copy && npm run capacitor:sync"
+  },
+  "keywords": [
+    "productivity",
+    "routine",
+    "daily",
+    "mobile",
+    "pwa"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "@capacitor/cli": "^5.0.0"
+  },
+  "dependencies": {
+    "@capacitor/core": "^5.0.0",
+    "@capacitor/android": "^5.0.0",
+    "@capacitor/ios": "^5.0.0"
+  }
+}

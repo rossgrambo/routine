@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Process</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2196F3">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Daily Process">
+</head>
+<body>
+    <!-- Navigation Menu -->
+    <nav class="nav-menu" id="navMenu">
+        <div class="nav-header">
+            <h2>Process</h2>
+            <button class="close-nav" id="closeNav">&times;</button>
+        </div>
+        <ul class="nav-items">
+            <li><a href="#" data-screen="process">Process</a></li>
+            <li><a href="#" data-screen="history">History</a></li>
+            <li><a href="#" data-screen="schedule">Schedule</a></li>
+            <li><a href="#" data-screen="settings">Settings</a></li>
+        </ul>
+    </nav>
+
+    <!-- Overlay for menu -->
+    <div class="overlay" id="overlay"></div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <button class="hamburger-menu" id="hamburgerMenu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <h1 class="app-title" id="screenTitle">Daily Process</h1>
+        </header>
+
+        <!-- Process Screen -->
+        <main class="screen active" id="processScreen">
+            <div class="activity-container">
+                <div class="activity-card">
+                    <h2 class="activity-title" id="currentActivity">Wake Up</h2>
+                    <div class="activity-meta" id="activityMeta"></div>
+                </div>
+                <button class="skip-btn" id="skipBtn">Skip</button>
+            </div>
+            <button class="done-btn" id="doneBtn">Done</button>
+        </main>
+
+        <!-- History Screen -->
+        <div class="screen" id="historyScreen">
+            <div class="history-container">
+                <div class="history-header">
+                    <h2>Activity History</h2>
+                    <button class="clear-history-btn" id="clearHistoryBtn">Clear All</button>
+                </div>
+                <div class="history-list" id="historyList">
+                    <!-- History items will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Schedule Screen -->
+        <div class="screen" id="scheduleScreen">
+            <div class="schedule-container">
+                <div class="schedule-header">
+                    <h2>Schedule</h2>
+                    <button class="add-activity-btn" id="addActivityBtn">+ Add Activity</button>
+                </div>
+                <div class="schedule-list" id="scheduleList">
+                    <!-- Schedule items will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Screen -->
+        <div class="screen" id="settingsScreen">
+            <div class="settings-container">
+                <h2>Settings</h2>
+                <div class="settings-content">
+                    <p>Settings coming soon...</p>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="soundToggle" checked>
+                            Sound Effects
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for editing activities -->
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Edit Activity</h3>
+                <button class="close-modal" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="activityForm">
+                    <div class="form-group">
+                        <label for="activityName">Activity Name</label>
+                        <input type="text" id="activityName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Days of Week</label>
+                        <div class="days-container">
+                            <label class="day-checkbox">
+                                <input type="checkbox" name="days" value="mon" checked>
+                                Mon
+                            </label>
+                            <label class="day-checkbox">
+                                <input type="checkbox" name="days" value="tue" checked>
+                                Tue
+                            </label>
+                            <label class="day-checkbox">
+                                <input type="checkbox" name="days" value="wed" checked>
+                                Wed
+                            </label>
+                            <label class="day-checkbox">
+                                <input type="checkbox" name="days" value="thu" checked>
+                                Thu
+                            </label>
+                            <label class="day-checkbox">
+                                <input type="checkbox" name="days" value="fri" checked>
+                                Fri
+                            </label>
+                            <label class="day-checkbox">
+                                <input type="checkbox" name="days" value="sat" checked>
+                                Sat
+                            </label>
+                            <label class="day-checkbox">
+                                <input type="checkbox" name="days" value="sun" checked>
+                                Sun
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="activityTime">Approximate Time (Optional)</label>
+                        <input type="time" id="activityTime">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="cancelEdit">Cancel</button>
+                        <button type="submit" class="btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for editing history entries -->
+    <div class="modal" id="historyModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit History Entry</h3>
+                <button class="close-modal" id="closeHistoryModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="historyForm">
+                    <div class="form-group">
+                        <label for="historyTimestamp">Timestamp</label>
+                        <input type="datetime-local" id="historyTimestamp" required>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="historySkipped">
+                            Mark as Skipped
+                        </label>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-danger" id="deleteHistoryEntry">Delete</button>
+                        <button type="button" class="btn-secondary" id="cancelHistoryEdit">Cancel</button>
+                        <button type="submit" class="btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
