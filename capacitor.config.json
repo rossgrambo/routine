@@ -1,6 +1,6 @@
 {
-  "appId": "com.example.dailyprocess",
-  "appName": "Daily Process",
+  "appId": "com.example.dailyroutine",
+  "appName": "Daily Routine",
   "webDir": ".",
   "bundledWebRuntime": false,
   "plugins": {

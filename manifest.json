@@ -1,6 +1,6 @@
 {
-  "name": "Daily Process",
-  "short_name": "Process",
+  "name": "Daily Routine",
+  "short_name": "Routine",
   "description": "A simple daily routine management app",
   "start_url": "./index.html",
   "display": "standalone",

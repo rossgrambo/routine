@@ -1,6 +1,6 @@
-// Daily Process App - Main JavaScript File
+// Daily Routine App - Main JavaScript File
 
-class DailyProcessApp {
+class DailyRoutineApp {
     constructor() {
         this.currentActivityIndex = 0;
         this.activities = [];
@@ -265,9 +265,9 @@ class DailyProcessApp {
 
     // Data Management
     loadData() {
-        const savedActivities = localStorage.getItem('dailyProcess_activities');
-        const savedHistory = localStorage.getItem('dailyProcess_history');
-        const savedIndex = localStorage.getItem('dailyProcess_currentIndex');
+        const savedActivities = localStorage.getItem('dailyRoutine_activities');
+        const savedHistory = localStorage.getItem('dailyRoutine_history');
+        const savedIndex = localStorage.getItem('dailyRoutine_currentIndex');
 
         if (savedActivities) {
             this.activities = JSON.parse(savedActivities);
@@ -283,9 +283,9 @@ class DailyProcessApp {
     }
 
     saveData() {
-        localStorage.setItem('dailyProcess_activities', JSON.stringify(this.activities));
-        localStorage.setItem('dailyProcess_history', JSON.stringify(this.history));
-        localStorage.setItem('dailyProcess_currentIndex', this.currentActivityIndex.toString());
+        localStorage.setItem('dailyRoutine_activities', JSON.stringify(this.activities));
+        localStorage.setItem('dailyRoutine_history', JSON.stringify(this.history));
+        localStorage.setItem('dailyRoutine_currentIndex', this.currentActivityIndex.toString());
     }
 
     initializeDefaultActivities() {
@@ -381,7 +381,7 @@ class DailyProcessApp {
             });
         });
 
-        // Process screen
+        // Routine screen
         const doneBtn = document.getElementById('doneBtn');
         const skipBtn = document.getElementById('skipBtn');
 
@@ -539,24 +539,24 @@ class DailyProcessApp {
 
         // Update screen title
         const titles = {
-            process: 'Daily Process',
+            routine: 'Daily Routine',
             history: 'History',
             schedule: 'Schedule',
             settings: 'Settings'
         };
-        document.getElementById('screenTitle').textContent = titles[screenName] || 'Daily Process';
+        document.getElementById('screenTitle').textContent = titles[screenName] || 'Daily Routine';
 
         // Update screen-specific content
         if (screenName === 'history') {
             this.renderHistory();
         } else if (screenName === 'schedule') {
             this.renderSchedule();
-        } else if (screenName === 'process') {
+        } else if (screenName === 'routine') {
             this.showCurrentActivity();
         }
     }
 
-    // Process Screen Logic
+    // Routine Screen Logic
     showCurrentActivity() {
         const todayActivities = this.getTodayActivities();
         
@@ -1034,14 +1034,14 @@ class DailyProcessApp {
             // Validate the imported data
             const validatedActivities = this.validateImportedActivities(importedData);
             
-            if (confirm(`This will replace all ${this.activities.length} existing activities with ${validatedActivities.length} imported activities. Are you sure?`)) {
+            //if (confirm(`This will replace all ${this.activities.length} existing activities with ${validatedActivities.length} imported activities. Are you sure?`)) {
                 this.activities = validatedActivities;
                 this.currentActivityIndex = 0; // Reset to first activity
                 this.saveData();
                 this.renderSchedule();
                 this.closeModal('importExportModal');
                 alert('Activities imported successfully!');
-            }
+            //} 
             
         } catch (error) {
             alert(`Error importing JSON data: ${error.message}`);
@@ -1166,7 +1166,7 @@ class DailyProcessApp {
 
 // Initialize the app when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    window.app = new DailyProcessApp();
+    window.app = new DailyRoutineApp();
 });
 
 // Service Worker registration for PWA functionality

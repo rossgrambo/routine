@@ -1,10 +1,10 @@
-# Daily Process App
+# Daily Routine App
 
 A simple, mobile-friendly web app for managing daily routines with guided step-by-step navigation.
 
 ## Features
 
-- **Process Screen**: Step through activities one at a time with large "Done" and "Skip" buttons
+- **Routine Screen**: Step through activities one at a time with large "Done" and "Skip" buttons
 - **History Tracking**: View completed and skipped activities with timestamps
 - **Schedule Management**: Add, edit, reorder, and customize activities
 - **Mobile-First Design**: Optimized for touch interfaces with smooth animations
@@ -54,7 +54,7 @@ npm install -g cordova
 
 2. Create Cordova project:
 ```bash
-cordova create myapp com.example.dailyprocess DailyProcess
+cordova create myapp com.example.dailyroutine DailyRoutine
 ```
 
 3. Copy files to `www` directory

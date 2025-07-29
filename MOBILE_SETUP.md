@@ -62,8 +62,8 @@ npm install -g cordova
 ### 2. Create Cordova Project
 
 ```bash
-cordova create dailyprocess com.example.dailyprocess "Daily Process"
-cd dailyprocess
+cordova create dailyroutine com.example.dailyroutine "Daily Routine"
+cd dailyroutine
 ```
 
 ### 3. Copy Web Files
