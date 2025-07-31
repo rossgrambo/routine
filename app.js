@@ -18,6 +18,19 @@ class DailyRoutineApp {
         
         // Check for widget view mode
         if (this.isWidgetMode()) {
+            // Check if we need to complete an activity first
+            const urlParams = new URLSearchParams(window.location.search);
+            const shouldComplete = urlParams.get('complete') === 'true';
+            
+            if (shouldComplete) {
+                // Complete the activity without updating the widget view yet
+                this.completeActivityWidgetSilent();
+                // Update URL to remove the complete parameter
+                const newUrl = new URL(window.location);
+                newUrl.searchParams.delete('complete');
+                window.history.replaceState({}, '', newUrl);
+            }
+            
             this.initWidgetMode();
         } else {
             this.setupEventListeners();
@@ -56,7 +69,7 @@ class DailyRoutineApp {
                         <h1 class="widget-activity-title" id="widgetActivityTitle">Loading...</h1>
                         <p class="widget-activity-meta" id="widgetActivityMeta"></p>
                     </div>
-                    <button class="widget-done-btn" id="widgetDoneBtn">Done</button>
+                    <a class="widget-done-btn" id="widgetDoneBtn" href="">Done</a>
                 </div>
             </div>
         `;
@@ -127,6 +140,10 @@ class DailyRoutineApp {
                 cursor: pointer;
                 transition: all 0.3s;
                 border-radius: 0 0 20px 20px;
+                text-decoration: none;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
             
             .widget-done-btn:hover {
@@ -197,7 +214,8 @@ class DailyRoutineApp {
         document.head.appendChild(style);
         
         // Add event listener for the done button
-        document.getElementById('widgetDoneBtn').addEventListener('click', () => {
+        document.getElementById('widgetDoneBtn').addEventListener('click', (e) => {
+            e.preventDefault();
             this.completeActivityWidget();
         });
         
@@ -233,10 +251,33 @@ class DailyRoutineApp {
         
         // Add a brief animation/feedback
         const btn = document.getElementById('widgetDoneBtn');
-        btn.style.transform = 'scale(0.95)';
-        setTimeout(() => {
-            btn.style.transform = '';
-        }, 150);
+        if (btn) {
+            btn.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                btn.style.transform = '';
+            }, 150);
+        }
+    }
+
+    completeActivityWidgetSilent() {
+        const todayActivities = this.getTodayActivities();
+        if (todayActivities.length === 0) return;
+
+        const currentActivity = todayActivities[this.currentActivityIndex];
+        
+        // Add to history
+        this.history.unshift({
+            id: Date.now(),
+            activityName: currentActivity.name,
+            timestamp: new Date().toISOString(),
+            skipped: false
+        });
+
+        // Move to next activity
+        this.currentActivityIndex = (this.currentActivityIndex + 1) % todayActivities.length;
+        
+        // Save data only (don't update widget view since DOM elements don't exist yet)
+        this.saveData();
     }
 
     updateWidgetView() {
@@ -245,6 +286,8 @@ class DailyRoutineApp {
         if (todayActivities.length === 0) {
             document.getElementById('widgetActivityTitle').textContent = 'No activities today';
             document.getElementById('widgetActivityMeta').textContent = '';
+            // Update link to just refresh the page
+            document.getElementById('widgetDoneBtn').href = window.location.href;
             return;
         }
 
@@ -261,6 +304,11 @@ class DailyRoutineApp {
             metaText = `Suggested time: ${this.formatTime(currentActivity.time)}`;
         }
         document.getElementById('widgetActivityMeta').textContent = metaText;
+        
+        // Update the link to include completion parameter
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('complete', 'true');
+        document.getElementById('widgetDoneBtn').href = currentUrl.toString();
     }
 
     // Data Management
