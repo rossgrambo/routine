@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safari Debug Test</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            padding: 20px; 
+            max-width: 800px; 
+            margin: 0 auto;
+            background-color: #f5f5f7;
+        }
+        .test-item { 
+            background: white;
+            margin: 10px 0; 
+            padding: 15px; 
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .pass { color: #28a745; font-weight: bold; }
+        .fail { color: #dc3545; font-weight: bold; }
+        .warning { color: #ffc107; font-weight: bold; }
+        pre { 
+            background: #f8f9fa; 
+            padding: 10px; 
+            border-radius: 4px; 
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        button {
+            background: #007aff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056cc;
+        }
+        .info-section {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Safari Compatibility Debug Test</h1>
+    <div class="info-section">
+        <p><strong>Instructions:</strong> This page will test Safari-specific features that might be causing issues with your app. Open this page in Safari and check the results below.</p>
+    </div>
+
+    <div id="results"></div>
+    
+    <div class="test-item">
+        <h3>Manual Tests</h3>
+        <button onclick="testLocalStorage()">Test localStorage</button>
+        <button onclick="testFetch()">Test Fetch API</button>
+        <button onclick="testURLParams()">Test URL Parameters</button>
+        <button onclick="testClipboard()">Test Clipboard</button>
+    </div>
+
+    <script>
+        const results = document.getElementById('results');
+        
+        function addResult(test, status, details) {
+            const div = document.createElement('div');
+            div.className = 'test-item';
+            div.innerHTML = `
+                <h3>${test}</h3>
+                <div class="${status.toLowerCase()}">${status.toUpperCase()}: ${details}</div>
+                ${status === 'FAIL' ? `<pre>${JSON.stringify(window.lastError, null, 2)}</pre>` : ''}
+            `;
+            results.appendChild(div);
+        }
+
+        // Run automatic tests
+        function runTests() {
+            // Test 1: Basic JavaScript features
+            try {
+                const testPromise = new Promise(resolve => resolve('test'));
+                addResult('Promise Support', 'PASS', 'Promise API available');
+            } catch (e) {
+                window.lastError = e;
+                addResult('Promise Support', 'FAIL', 'Promise API not available');
+            }
+
+            // Test 2: Fetch API
+            try {
+                if (typeof fetch !== 'undefined') {
+                    addResult('Fetch API', 'PASS', 'Fetch API available');
+                } else {
+                    addResult('Fetch API', 'FAIL', 'Fetch API not available');
+                }
+            } catch (e) {
+                window.lastError = e;
+                addResult('Fetch API', 'FAIL', 'Error checking fetch API');
+            }
+
+            // Test 3: URL API
+            try {
+                const testUrl = new URL(window.location.href);
+                addResult('URL API', 'PASS', 'URL constructor available');
+            } catch (e) {
+                window.lastError = e;
+                addResult('URL API', 'FAIL', 'URL constructor not available');
+            }
+
+            // Test 4: URLSearchParams
+            try {
+                const params = new URLSearchParams(window.location.search);
+                addResult('URLSearchParams', 'PASS', 'URLSearchParams available');
+            } catch (e) {
+                window.lastError = e;
+                addResult('URLSearchParams', 'FAIL', 'URLSearchParams not available');
+            }
+
+            // Test 5: localStorage
+            try {
+                localStorage.setItem('__test__', 'test');
+                localStorage.removeItem('__test__');
+                addResult('localStorage', 'PASS', 'localStorage read/write works');
+            } catch (e) {
+                window.lastError = e;
+                addResult('localStorage', 'FAIL', 'localStorage not available (private mode?)');
+            }
+
+            // Test 6: sessionStorage fallback
+            try {
+                sessionStorage.setItem('__test__', 'test');
+                sessionStorage.removeItem('__test__');
+                addResult('sessionStorage', 'PASS', 'sessionStorage read/write works');
+            } catch (e) {
+                window.lastError = e;
+                addResult('sessionStorage', 'FAIL', 'sessionStorage not available');
+            }
+
+            // Test 7: Browser detection
+            const userAgent = navigator.userAgent;
+            const isSafari = /^((?!chrome|android).)*safari/i.test(userAgent);
+            const isPrivate = checkPrivateMode();
+            
+            addResult('Browser Info', 'INFO', `Safari: ${isSafari ? 'Yes' : 'No'}, Private: ${isPrivate ? 'Possible' : 'No'}`);
+
+            // Test 8: Clipboard API
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    addResult('Clipboard API', 'PASS', 'Modern clipboard API available');
+                } else {
+                    addResult('Clipboard API', 'WARNING', 'Modern clipboard API not available (not secure context or not supported)');
+                }
+            } catch (e) {
+                window.lastError = e;
+                addResult('Clipboard API', 'FAIL', 'Error checking clipboard API');
+            }
+
+            // Test 9: History API
+            try {
+                if (typeof history.replaceState === 'function') {
+                    addResult('History API', 'PASS', 'History.replaceState available');
+                } else {
+                    addResult('History API', 'FAIL', 'History.replaceState not available');
+                }
+            } catch (e) {
+                window.lastError = e;
+                addResult('History API', 'FAIL', 'Error checking History API');
+            }
+        }
+
+        function checkPrivateMode() {
+            try {
+                localStorage.setItem('__private_test__', '1');
+                localStorage.removeItem('__private_test__');
+                return false;
+            } catch (e) {
+                return true;
+            }
+        }
+
+        // Manual test functions
+        function testLocalStorage() {
+            try {
+                const testKey = '__manual_test__' + Date.now();
+                const testValue = 'test_data_' + Math.random();
+                
+                localStorage.setItem(testKey, testValue);
+                const retrieved = localStorage.getItem(testKey);
+                localStorage.removeItem(testKey);
+                
+                if (retrieved === testValue) {
+                    alert('✅ localStorage test PASSED');
+                } else {
+                    alert('❌ localStorage test FAILED: Value mismatch');
+                }
+            } catch (e) {
+                alert('❌ localStorage test FAILED: ' + e.message);
+            }
+        }
+
+        async function testFetch() {
+            try {
+                const response = await fetch('data:text/plain,Hello%20Safari');
+                const text = await response.text();
+                if (text === 'Hello Safari') {
+                    alert('✅ Fetch API test PASSED');
+                } else {
+                    alert('❌ Fetch API test FAILED: Unexpected response');
+                }
+            } catch (e) {
+                alert('❌ Fetch API test FAILED: ' + e.message);
+            }
+        }
+
+        function testURLParams() {
+            try {
+                // Test current URL
+                const current = new URLSearchParams(window.location.search);
+                
+                // Test with sample data
+                const test = new URLSearchParams('?test=1&api-key=sample&other=value');
+                const apiKey = test.get('api-key');
+                
+                if (apiKey === 'sample') {
+                    alert('✅ URL Parameters test PASSED');
+                } else {
+                    alert('❌ URL Parameters test FAILED: Could not parse api-key');
+                }
+            } catch (e) {
+                alert('❌ URL Parameters test FAILED: ' + e.message);
+            }
+        }
+
+        async function testClipboard() {
+            const testText = 'Safari clipboard test ' + Date.now();
+            
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(testText);
+                    const readText = await navigator.clipboard.readText();
+                    if (readText === testText) {
+                        alert('✅ Modern Clipboard API test PASSED');
+                    } else {
+                        alert('⚠️ Modern Clipboard API partial: Write succeeded but read failed');
+                    }
+                } else {
+                    // Test fallback method
+                    const textarea = document.createElement('textarea');
+                    textarea.value = testText;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    const success = document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    
+                    if (success) {
+                        alert('✅ Fallback clipboard test PASSED');
+                    } else {
+                        alert('❌ Fallback clipboard test FAILED');
+                    }
+                }
+            } catch (e) {
+                alert('❌ Clipboard test FAILED: ' + e.message);
+            }
+        }
+
+        // Display system info
+        function displaySystemInfo() {
+            const info = {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
+                cookieEnabled: navigator.cookieEnabled,
+                onLine: navigator.onLine,
+                secureContext: window.isSecureContext,
+                location: {
+                    protocol: location.protocol,
+                    host: location.host,
+                    pathname: location.pathname,
+                    search: location.search
+                }
+            };
+            
+            const div = document.createElement('div');
+            div.className = 'test-item';
+            div.innerHTML = `
+                <h3>System Information</h3>
+                <pre>${JSON.stringify(info, null, 2)}</pre>
+            `;
+            results.appendChild(div);
+        }
+
+        // Run tests when page loads
+        window.addEventListener('load', () => {
+            displaySystemInfo();
+            runTests();
+        });
+    </script>
+</body>
+</html>

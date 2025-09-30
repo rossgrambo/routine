@@ -22,6 +22,9 @@ class DailyRoutineApp {
             this.isInitializing = true;
             this.showInitializing();
             
+            // Safari-specific checks
+            this.checkSafariCompatibility();
+            
             // Try to initialize Google Sheets integration
             await this.initializeGoogleSheets();
             
@@ -31,19 +34,29 @@ class DailyRoutineApp {
             
             this.hideInitializing();
             
-            // Check for widget view mode
+            // Check for widget view mode (Safari-compatible)
             if (this.isWidgetMode()) {
                 // Check if we need to complete an activity first
-                const urlParams = new URLSearchParams(window.location.search);
-                const shouldComplete = urlParams.get('complete') === 'true';
+                let shouldComplete = false;
+                try {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    shouldComplete = urlParams.get('complete') === 'true';
+                } catch (urlError) {
+                    console.warn('URLSearchParams failed, using fallback:', urlError);
+                    shouldComplete = window.location.search.includes('complete=true');
+                }
                 
                 if (shouldComplete) {
                     // Complete the activity without updating the widget view yet
                     await this.completeActivityWidgetSilent();
-                    // Update URL to remove the complete parameter
-                    const newUrl = new URL(window.location);
-                    newUrl.searchParams.delete('complete');
-                    window.history.replaceState({}, '', newUrl);
+                    // Update URL to remove the complete parameter (Safari-compatible)
+                    try {
+                        const newUrl = new URL(window.location);
+                        newUrl.searchParams.delete('complete');
+                        window.history.replaceState({}, '', newUrl);
+                    } catch (urlError) {
+                        console.warn('URL update failed:', urlError);
+                    }
                 }
                 
                 this.initWidgetMode();
@@ -58,6 +71,39 @@ class DailyRoutineApp {
             this.handleInitializationError(error);
         } finally {
             this.isInitializing = false;
+        }
+    }
+
+    // Safari compatibility check
+    checkSafariCompatibility() {
+        const issues = [];
+        
+        // Check localStorage
+        if (!StorageHelper.isLocalStorageAvailable()) {
+            issues.push('localStorage may be restricted (private browsing mode?)');
+        }
+        
+        // Check fetch API
+        if (typeof fetch === 'undefined') {
+            issues.push('fetch API not available');
+        }
+        
+        // Check URL API
+        if (typeof URL === 'undefined') {
+            issues.push('URL API not available');
+        }
+        
+        // Check Promise support
+        if (typeof Promise === 'undefined') {
+            issues.push('Promise support missing');
+        }
+        
+        if (issues.length > 0) {
+            console.warn('Safari compatibility issues detected:', issues);
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            if (isSafari) {
+                console.warn('Safari detected - some features may be limited');
+            }
         }
     }
 
@@ -598,23 +644,42 @@ class DailyRoutineApp {
     loadDataFromLocalStorage() {
         console.log('Loading data from localStorage...');
         
-        const savedActivities = localStorage.getItem('dailyRoutine_activities');
-        const savedHistory = localStorage.getItem('dailyRoutine_history');
-        const savedIndex = localStorage.getItem('dailyRoutine_currentIndex');
+        try {
+            // Use Safari-safe storage methods
+            const savedActivities = StorageHelper.safariSafeGetItem('dailyRoutine_activities');
+            const savedHistory = StorageHelper.safariSafeGetItem('dailyRoutine_history');
+            const savedIndex = StorageHelper.safariSafeGetItem('dailyRoutine_currentIndex');
 
-        if (savedActivities) {
-            this.activities = JSON.parse(savedActivities);
-        }
+            if (savedActivities) {
+                try {
+                    this.activities = JSON.parse(savedActivities);
+                } catch (parseError) {
+                    console.warn('Failed to parse activities from storage:', parseError);
+                    this.activities = [];
+                }
+            }
 
-        if (savedHistory) {
-            this.history = JSON.parse(savedHistory);
-        }
+            if (savedHistory) {
+                try {
+                    this.history = JSON.parse(savedHistory);
+                } catch (parseError) {
+                    console.warn('Failed to parse history from storage:', parseError);
+                    this.history = [];
+                }
+            }
 
-        if (savedIndex !== null) {
-            this.currentActivityIndex = parseInt(savedIndex) || 0;
+            if (savedIndex !== null) {
+                this.currentActivityIndex = parseInt(savedIndex) || 0;
+            }
+            
+            console.log(`Loaded ${this.activities.length} activities, ${this.history.length} history entries from storage`);
+        } catch (error) {
+            console.error('Failed to load data from localStorage (Safari compatibility issue):', error);
+            // Initialize with empty data if loading fails
+            this.activities = [];
+            this.history = [];
+            this.currentActivityIndex = 0;
         }
-        
-        console.log(`Loaded ${this.activities.length} activities, ${this.history.length} history entries from localStorage`);
     }
 
     async saveData() {
@@ -651,9 +716,15 @@ class DailyRoutineApp {
     }
 
     saveDataToLocalStorage() {
-        localStorage.setItem('dailyRoutine_activities', JSON.stringify(this.activities));
-        localStorage.setItem('dailyRoutine_history', JSON.stringify(this.history));
-        localStorage.setItem('dailyRoutine_currentIndex', this.currentActivityIndex.toString());
+        try {
+            // Use Safari-safe storage methods
+            StorageHelper.safariSafeSetItem('dailyRoutine_activities', JSON.stringify(this.activities));
+            StorageHelper.safariSafeSetItem('dailyRoutine_history', JSON.stringify(this.history));
+            StorageHelper.safariSafeSetItem('dailyRoutine_currentIndex', this.currentActivityIndex.toString());
+        } catch (error) {
+            console.error('Failed to save data to localStorage (Safari compatibility issue):', error);
+            this.showError('Failed to save data locally. Your changes may not persist.', 'error');
+        }
     }
 
     initializeDefaultActivities() {
@@ -1359,12 +1430,22 @@ class DailyRoutineApp {
         const jsonData = document.getElementById('jsonData').value;
         
         try {
-            // Check if clipboard API is available
-            if (navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(jsonData);
+            // Enhanced Safari clipboard compatibility check
+            const hasClipboardAPI = navigator.clipboard && 
+                                  window.isSecureContext && 
+                                  typeof navigator.clipboard.writeText === 'function';
+            
+            if (hasClipboardAPI) {
+                // Test clipboard availability with a small timeout for Safari
+                const clipboardPromise = navigator.clipboard.writeText(jsonData);
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Clipboard timeout')), 3000)
+                );
+                
+                await Promise.race([clipboardPromise, timeoutPromise]);
                 this.showCopyFeedback();
             } else {
-                // Fallback for Safari and other browsers
+                // Immediate fallback for Safari issues
                 this.fallbackCopyToClipboard(jsonData);
             }
             
@@ -1500,13 +1581,32 @@ class DailyRoutineApp {
         modal.classList.add('show');
         document.body.style.overflow = 'hidden';
         
-        // Fix for Safari mobile viewport issues
+        // Enhanced Safari mobile compatibility
         if (modalId === 'importExportModal') {
             // Ensure the modal is fully visible on mobile Safari
             setTimeout(() => {
                 const modalContent = modal.querySelector('.modal-content');
                 if (modalContent) {
-                    modalContent.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Safari-specific scroll fix
+                    try {
+                        modalContent.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } catch (e) {
+                        // Fallback for older Safari versions
+                        modalContent.scrollIntoView(false);
+                    }
+                }
+                
+                // Safari iOS focus fix for text areas
+                const jsonTextarea = document.getElementById('jsonData');
+                if (jsonTextarea && this.currentImportExportMode === 'import') {
+                    // Small delay to ensure Safari processes the modal display
+                    setTimeout(() => {
+                        try {
+                            jsonTextarea.focus();
+                        } catch (focusError) {
+                            console.warn('Focus failed on Safari:', focusError);
+                        }
+                    }, 200);
                 }
             }, 100);
         }

@@ -11,6 +11,11 @@ class HomeSecretsClient {
         try {
             this.baseUrl = config.BASE_URL;
             
+            // Safari compatibility check
+            if (typeof fetch === 'undefined') {
+                throw new Error('Fetch API not available. Please use a modern browser.');
+            }
+            
             // Handle API key from URL and localStorage
             const urlApiKey = StorageHelper.getApiKeyFromUrl();
             const storedApiKey = StorageHelper.loadApiKey();
@@ -20,10 +25,20 @@ class HomeSecretsClient {
                 StorageHelper.saveApiKey(urlApiKey);
                 console.log('API key provided in URL and saved');
                 
-                // Clean up URL to remove API key for security
-                const url = new URL(window.location);
-                url.searchParams.delete('api-key');
-                window.history.replaceState({}, '', url);
+                // Clean up URL to remove API key for security (Safari-compatible)
+                try {
+                    if (typeof URL !== 'undefined' && typeof URLSearchParams !== 'undefined') {
+                        const url = new URL(window.location.href);
+                        url.searchParams.delete('api-key');
+                        window.history.replaceState({}, '', url.toString());
+                    } else {
+                        // Fallback for Safari URL cleaning
+                        this.safariCleanUrl();
+                    }
+                } catch (urlError) {
+                    console.warn('URL cleaning failed, continuing anyway:', urlError);
+                    // Continue without URL cleaning if it fails
+                }
                 
             } else if (storedApiKey) {
                 this.apiKey = storedApiKey;
@@ -50,6 +65,22 @@ class HomeSecretsClient {
         }
     }
 
+    // Safari-compatible URL cleaning fallback
+    safariCleanUrl() {
+        try {
+            const currentUrl = window.location.href;
+            const cleanUrl = currentUrl.replace(/[?&]api-key=[^&]*(&|$)/, function(match, suffix) {
+                return suffix === '&' ? '&' : '';
+            }).replace(/[?]$/, ''); // Remove trailing ? if it exists
+            
+            if (cleanUrl !== currentUrl) {
+                window.history.replaceState({}, '', cleanUrl);
+            }
+        } catch (e) {
+            console.warn('Safari URL cleaning fallback failed:', e);
+        }
+    }
+
     async checkTokenValidity() {
         try {
             console.log('Checking token validity with Home Secrets service...');
@@ -61,13 +92,34 @@ class HomeSecretsClient {
             // Build token URL with API key
             const tokenUrl = `${this.baseUrl}/oauth/google/token?api-key=${encodeURIComponent(this.apiKey)}`;
             
-            const response = await fetch(tokenUrl, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-API-Key': this.apiKey
+            // Safari-compatible fetch with timeout and error handling
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            
+            let response;
+            try {
+                response = await fetch(tokenUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': this.apiKey
+                    },
+                    signal: controller.signal,
+                    // Safari sometimes needs these explicit settings
+                    mode: 'cors',
+                    credentials: 'omit',
+                    cache: 'no-cache'
+                });
+            } catch (fetchError) {
+                clearTimeout(timeoutId);
+                if (fetchError.name === 'AbortError') {
+                    throw new Error('Request timeout - please check your internet connection');
+                } else {
+                    throw new Error(`Network error: ${fetchError.message}`);
                 }
-            });
+            } finally {
+                clearTimeout(timeoutId);
+            }
             
             if (response.status === 401 || response.status === 403) {
                 throw new Error('API key invalid or expired. Please get a new API key.');
@@ -77,16 +129,40 @@ class HomeSecretsClient {
                 throw new Error(`Token endpoint error: ${response.status} ${response.statusText}`);
             }
             
-            const tokenData = await response.json();
+            let tokenData;
+            try {
+                const responseText = await response.text();
+                if (!responseText) {
+                    throw new Error('Empty response from server');
+                }
+                tokenData = JSON.parse(responseText);
+            } catch (jsonError) {
+                console.error('JSON parsing error:', jsonError);
+                throw new Error(`Invalid response from server: ${jsonError.message}`);
+            }
             
             if (tokenData.access_token) {
                 this.accessToken = tokenData.access_token;
                 
-                // Set expiry time
+                // Set expiry time (Safari date parsing compatibility)
                 if (tokenData.expiry) {
-                    this.tokenExpiryTime = typeof tokenData.expiry === 'string' 
-                        ? new Date(tokenData.expiry).getTime()
-                        : tokenData.expiry * 1000;
+                    try {
+                        if (typeof tokenData.expiry === 'string') {
+                            // Safari sometimes has issues with ISO date parsing
+                            const expiryDate = new Date(tokenData.expiry);
+                            if (isNaN(expiryDate.getTime())) {
+                                // Try parsing as timestamp if ISO parsing fails
+                                this.tokenExpiryTime = parseInt(tokenData.expiry) * 1000;
+                            } else {
+                                this.tokenExpiryTime = expiryDate.getTime();
+                            }
+                        } else {
+                            this.tokenExpiryTime = tokenData.expiry * 1000;
+                        }
+                    } catch (dateError) {
+                        console.warn('Date parsing error, using default expiry:', dateError);
+                        this.tokenExpiryTime = Date.now() + (3600 * 1000);
+                    }
                 } else {
                     // Default to 1 hour from now if no expiry provided
                     this.tokenExpiryTime = Date.now() + (3600 * 1000);
