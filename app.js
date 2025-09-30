@@ -9,33 +9,55 @@ class DailyRoutineApp {
         this.currentEditingHistory = null;
         this.currentImportExportMode = null;
         
+        // Google Sheets integration state
+        this.isGoogleSheetsEnabled = false;
+        this.isInitializing = false;
+        this.useOfflineMode = false;
+        
         this.init();
     }
 
-    init() {
-        this.loadData();
-        this.initializeDefaultActivities();
-        
-        // Check for widget view mode
-        if (this.isWidgetMode()) {
-            // Check if we need to complete an activity first
-            const urlParams = new URLSearchParams(window.location.search);
-            const shouldComplete = urlParams.get('complete') === 'true';
+    async init() {
+        try {
+            this.isInitializing = true;
+            this.showInitializing();
             
-            if (shouldComplete) {
-                // Complete the activity without updating the widget view yet
-                this.completeActivityWidgetSilent();
-                // Update URL to remove the complete parameter
-                const newUrl = new URL(window.location);
-                newUrl.searchParams.delete('complete');
-                window.history.replaceState({}, '', newUrl);
+            // Try to initialize Google Sheets integration
+            await this.initializeGoogleSheets();
+            
+            // Load data (from Google Sheets or localStorage fallback)
+            await this.loadData();
+            this.initializeDefaultActivities();
+            
+            this.hideInitializing();
+            
+            // Check for widget view mode
+            if (this.isWidgetMode()) {
+                // Check if we need to complete an activity first
+                const urlParams = new URLSearchParams(window.location.search);
+                const shouldComplete = urlParams.get('complete') === 'true';
+                
+                if (shouldComplete) {
+                    // Complete the activity without updating the widget view yet
+                    await this.completeActivityWidgetSilent();
+                    // Update URL to remove the complete parameter
+                    const newUrl = new URL(window.location);
+                    newUrl.searchParams.delete('complete');
+                    window.history.replaceState({}, '', newUrl);
+                }
+                
+                this.initWidgetMode();
+            } else {
+                this.setupEventListeners();
+                this.updateUI();
+                this.showCurrentActivity();
             }
             
-            this.initWidgetMode();
-        } else {
-            this.setupEventListeners();
-            this.updateUI();
-            this.showCurrentActivity();
+        } catch (error) {
+            console.error('Error initializing app:', error);
+            this.handleInitializationError(error);
+        } finally {
+            this.isInitializing = false;
         }
     }
 
@@ -43,6 +65,219 @@ class DailyRoutineApp {
     isWidgetMode() {
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get('view') === 'widget';
+    }
+
+    // Initialize Google Sheets integration
+    async initializeGoogleSheets() {
+        try {
+            console.log('Initializing Google Sheets integration...');
+            
+            // Check if we have an API key available
+            const hasApiKey = StorageHelper.getApiKeyFromUrl() || StorageHelper.loadApiKey();
+            
+            if (!hasApiKey) {
+                console.log('No API key found, using offline mode');
+                this.useOfflineMode = true;
+                this.isGoogleSheetsEnabled = false;
+                return false;
+            }
+            
+            // Initialize Google Sheets API
+            await sheetsAPI.initialize();
+            
+            // Initialize Spreadsheet Manager
+            await spreadsheetManager.initialize();
+            
+            this.isGoogleSheetsEnabled = true;
+            this.useOfflineMode = false;
+            console.log('Google Sheets integration initialized successfully');
+            
+            return true;
+            
+        } catch (error) {
+            console.warn('Failed to initialize Google Sheets, falling back to offline mode:', error);
+            this.isGoogleSheetsEnabled = false;
+            this.useOfflineMode = true;
+            
+            // Show user-friendly message
+            this.showConnectionError(error.message);
+            
+            return false;
+        }
+    }
+
+    showInitializing() {
+        // Show loading state
+        console.log('App initializing...');
+        // You could show a loading overlay here
+    }
+
+    hideInitializing() {
+        // Hide loading state
+        console.log('App initialization complete');
+    }
+
+    handleInitializationError(error) {
+        console.error('App initialization failed:', error);
+        this.useOfflineMode = true;
+        this.isGoogleSheetsEnabled = false;
+        
+        // Load data from localStorage as fallback
+        this.loadDataFromLocalStorage();
+        this.initializeDefaultActivities();
+        
+        // Continue with normal app initialization
+        if (!this.isWidgetMode()) {
+            this.setupEventListeners();
+            this.updateUI();
+            this.showCurrentActivity();
+        }
+        
+        this.showError(`Failed to initialize: ${error.message}. Running in offline mode.`);
+    }
+
+    showConnectionError(message) {
+        // Show a non-blocking notification about connection issues
+        console.warn('Connection issue:', message);
+        // You could implement a toast notification here
+    }
+
+    // Settings screen management
+    updateSettingsScreen() {
+        this.updateGoogleSheetsStatus();
+        this.setupSettingsEventListeners();
+    }
+
+    updateGoogleSheetsStatus() {
+        const statusElement = document.getElementById('googleSheetsStatus');
+        const spreadsheetInfo = document.getElementById('spreadsheetInfo');
+        const spreadsheetLink = document.getElementById('spreadsheetLink');
+        
+        if (!statusElement) return;
+        
+        if (this.isGoogleSheetsEnabled && !this.useOfflineMode) {
+            statusElement.textContent = '✅ Connected';
+            statusElement.style.color = 'green';
+            
+            if (spreadsheetManager.spreadsheetId) {
+                const url = spreadsheetManager.getSpreadsheetUrl();
+                spreadsheetLink.href = url;
+                spreadsheetLink.textContent = spreadsheetManager.spreadsheetName || 'View Spreadsheet';
+                spreadsheetInfo.style.display = 'block';
+            }
+        } else if (this.useOfflineMode) {
+            statusElement.textContent = '⚠️ Offline Mode';
+            statusElement.style.color = 'orange';
+            spreadsheetInfo.style.display = 'none';
+        } else {
+            statusElement.textContent = '❌ Not Connected';
+            statusElement.style.color = 'red';
+            spreadsheetInfo.style.display = 'none';
+        }
+    }
+
+    setupSettingsEventListeners() {
+        const refreshBtn = document.getElementById('refreshConnection');
+        const clearApiKeyBtn = document.getElementById('clearApiKey');
+        const debugBtn = document.getElementById('showDebugInfo');
+        
+        // Remove existing listeners to prevent duplicates
+        refreshBtn?.replaceWith(refreshBtn.cloneNode(true));
+        clearApiKeyBtn?.replaceWith(clearApiKeyBtn.cloneNode(true));
+        debugBtn?.replaceWith(debugBtn.cloneNode(true));
+        
+        // Add new listeners
+        document.getElementById('refreshConnection')?.addEventListener('click', async () => {
+            await this.refreshGoogleSheetsConnection();
+        });
+        
+        document.getElementById('clearApiKey')?.addEventListener('click', () => {
+            this.clearApiKeyAndReset();
+        });
+        
+        document.getElementById('showDebugInfo')?.addEventListener('click', () => {
+            this.toggleDebugInfo();
+        });
+    }
+
+    async refreshGoogleSheetsConnection() {
+        try {
+            const refreshBtn = document.getElementById('refreshConnection');
+            if (refreshBtn) {
+                refreshBtn.disabled = true;
+                refreshBtn.textContent = 'Refreshing...';
+            }
+            
+            // Try to reinitialize Google Sheets
+            await this.initializeGoogleSheets();
+            this.updateGoogleSheetsStatus();
+            
+            if (this.isGoogleSheetsEnabled) {
+                // Reload data from Google Sheets
+                await this.loadData();
+                this.showError('Connection refreshed successfully!', 'success');
+            }
+            
+        } catch (error) {
+            console.error('Error refreshing connection:', error);
+            this.showError(`Failed to refresh connection: ${error.message}`);
+        } finally {
+            const refreshBtn = document.getElementById('refreshConnection');
+            if (refreshBtn) {
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = 'Refresh Connection';
+            }
+        }
+    }
+
+    clearApiKeyAndReset() {
+        if (confirm('This will clear your API key and reset the app to offline mode. Continue?')) {
+            // Clear API key and reset state
+            homeSecretsClient.clearApiKey();
+            StorageHelper.clearSpreadsheetId();
+            
+            this.isGoogleSheetsEnabled = false;
+            this.useOfflineMode = true;
+            
+            this.updateGoogleSheetsStatus();
+            this.showError('API key cleared. You can provide a new one in the URL.', 'info');
+        }
+    }
+
+    toggleDebugInfo() {
+        const debugInfo = document.getElementById('debugInfo');
+        const debugBtn = document.getElementById('showDebugInfo');
+        
+        if (debugInfo.style.display === 'none' || !debugInfo.style.display) {
+            // Show debug info
+            const info = {
+                app: {
+                    isGoogleSheetsEnabled: this.isGoogleSheetsEnabled,
+                    useOfflineMode: this.useOfflineMode,
+                    isInitializing: this.isInitializing,
+                    activitiesCount: this.activities.length,
+                    historyCount: this.history.length,
+                    currentActivityIndex: this.currentActivityIndex
+                },
+                storage: {
+                    hasApiKey: !!StorageHelper.loadApiKey(),
+                    hasSpreadsheetId: !!StorageHelper.loadSpreadsheetId(),
+                    hasExistingData: StorageHelper.hasExistingData(),
+                    isOnline: StorageHelper.isOnline()
+                },
+                googleSheets: sheetsAPI.getDebugInfo(),
+                spreadsheetManager: spreadsheetManager.getDebugInfo(),
+                homeSecrets: homeSecretsClient.getTokenInfo()
+            };
+            
+            debugInfo.textContent = JSON.stringify(info, null, 2);
+            debugInfo.style.display = 'block';
+            debugBtn.textContent = 'Hide Debug Info';
+        } else {
+            // Hide debug info
+            debugInfo.style.display = 'none';
+            debugBtn.textContent = 'Show Debug Info';
+        }
     }
 
     // Initialize widget-only view
@@ -214,9 +449,16 @@ class DailyRoutineApp {
         document.head.appendChild(style);
         
         // Add event listener for the done button
-        document.getElementById('widgetDoneBtn').addEventListener('click', (e) => {
+        document.getElementById('widgetDoneBtn').addEventListener('click', async (e) => {
             e.preventDefault();
-            this.completeActivityWidget();
+            const btn = e.target;
+            btn.style.pointerEvents = 'none'; // Prevent double-clicks
+            
+            try {
+                await this.completeActivityWidget();
+            } finally {
+                btn.style.pointerEvents = 'auto';
+            }
         });
         
         // Show current activity in widget view
@@ -228,7 +470,7 @@ class DailyRoutineApp {
         }, 30000);
     }
 
-    completeActivityWidget() {
+    async completeActivityWidget() {
         const todayActivities = this.getTodayActivities();
         if (todayActivities.length === 0) return;
 
@@ -246,7 +488,7 @@ class DailyRoutineApp {
         this.currentActivityIndex = (this.currentActivityIndex + 1) % todayActivities.length;
         
         // Save data and update widget view
-        this.saveData();
+        await this.saveData();
         this.updateWidgetView();
         
         // Add a brief animation/feedback
@@ -259,7 +501,7 @@ class DailyRoutineApp {
         }
     }
 
-    completeActivityWidgetSilent() {
+    async completeActivityWidgetSilent() {
         const todayActivities = this.getTodayActivities();
         if (todayActivities.length === 0) return;
 
@@ -277,7 +519,7 @@ class DailyRoutineApp {
         this.currentActivityIndex = (this.currentActivityIndex + 1) % todayActivities.length;
         
         // Save data only (don't update widget view since DOM elements don't exist yet)
-        this.saveData();
+        await this.saveData();
     }
 
     updateWidgetView() {
@@ -312,7 +554,50 @@ class DailyRoutineApp {
     }
 
     // Data Management
-    loadData() {
+    async loadData() {
+        if (this.isGoogleSheetsEnabled && !this.useOfflineMode) {
+            return await this.loadDataFromGoogleSheets();
+        } else {
+            return this.loadDataFromLocalStorage();
+        }
+    }
+
+    async loadDataFromGoogleSheets() {
+        try {
+            console.log('Loading data from Google Sheets...');
+            
+            // Load activities
+            const activities = await spreadsheetManager.loadActivities();
+            if (activities && activities.length > 0) {
+                this.activities = activities;
+            }
+            
+            // Load history
+            const history = await spreadsheetManager.loadHistory();
+            if (history && history.length > 0) {
+                this.history = history;
+            }
+            
+            // Load current activity index
+            const currentIndex = await spreadsheetManager.loadCurrentActivityIndex();
+            this.currentActivityIndex = currentIndex;
+            
+            console.log(`Loaded ${this.activities.length} activities, ${this.history.length} history entries from Google Sheets`);
+            
+        } catch (error) {
+            console.error('Error loading data from Google Sheets:', error);
+            
+            // Fallback to localStorage
+            console.log('Falling back to localStorage...');
+            this.loadDataFromLocalStorage();
+            
+            throw error;
+        }
+    }
+
+    loadDataFromLocalStorage() {
+        console.log('Loading data from localStorage...');
+        
         const savedActivities = localStorage.getItem('dailyRoutine_activities');
         const savedHistory = localStorage.getItem('dailyRoutine_history');
         const savedIndex = localStorage.getItem('dailyRoutine_currentIndex');
@@ -328,9 +613,44 @@ class DailyRoutineApp {
         if (savedIndex !== null) {
             this.currentActivityIndex = parseInt(savedIndex) || 0;
         }
+        
+        console.log(`Loaded ${this.activities.length} activities, ${this.history.length} history entries from localStorage`);
     }
 
-    saveData() {
+    async saveData() {
+        if (this.isGoogleSheetsEnabled && !this.useOfflineMode) {
+            return await this.saveDataToGoogleSheets();
+        } else {
+            return this.saveDataToLocalStorage();
+        }
+    }
+
+    async saveDataToGoogleSheets() {
+        try {
+            // Save all data to Google Sheets
+            await Promise.all([
+                spreadsheetManager.saveActivities(this.activities),
+                spreadsheetManager.saveHistory(this.history),
+                spreadsheetManager.saveCurrentActivityIndex(this.currentActivityIndex)
+            ]);
+            
+            // Also save to localStorage as backup
+            this.saveDataToLocalStorage();
+            
+            console.log('Data saved to Google Sheets successfully');
+            
+        } catch (error) {
+            console.error('Error saving data to Google Sheets:', error);
+            
+            // Always save to localStorage as fallback
+            this.saveDataToLocalStorage();
+            
+            // Don't throw error - app should continue working with localStorage
+            console.log('Data saved to localStorage as fallback');
+        }
+    }
+
+    saveDataToLocalStorage() {
         localStorage.setItem('dailyRoutine_activities', JSON.stringify(this.activities));
         localStorage.setItem('dailyRoutine_history', JSON.stringify(this.history));
         localStorage.setItem('dailyRoutine_currentIndex', this.currentActivityIndex.toString());
@@ -433,8 +753,22 @@ class DailyRoutineApp {
         const doneBtn = document.getElementById('doneBtn');
         const skipBtn = document.getElementById('skipBtn');
 
-        doneBtn.addEventListener('click', () => this.completeActivity());
-        skipBtn.addEventListener('click', () => this.skipActivity());
+        doneBtn.addEventListener('click', async () => {
+            doneBtn.disabled = true;
+            try {
+                await this.completeActivity();
+            } finally {
+                doneBtn.disabled = false;
+            }
+        });
+        skipBtn.addEventListener('click', async () => {
+            skipBtn.disabled = true;
+            try {
+                await this.skipActivity();
+            } finally {
+                skipBtn.disabled = false;
+            }
+        });
 
         // Schedule screen
         const addActivityBtn = document.getElementById('addActivityBtn');
@@ -442,7 +776,14 @@ class DailyRoutineApp {
 
         // History screen
         const clearHistoryBtn = document.getElementById('clearHistoryBtn');
-        clearHistoryBtn.addEventListener('click', () => this.clearHistory());
+        clearHistoryBtn.addEventListener('click', async () => {
+            clearHistoryBtn.disabled = true;
+            try {
+                await this.clearHistory();
+            } finally {
+                clearHistoryBtn.disabled = false;
+            }
+        });
 
         // Modals
         this.setupModalEventListeners();
@@ -469,9 +810,16 @@ class DailyRoutineApp {
             if (e.target === editModal) this.closeModal('editModal');
         });
 
-        activityForm.addEventListener('submit', (e) => {
+        activityForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            this.saveActivity();
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+            
+            try {
+                await this.saveActivity();
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+            }
         });
 
         // History Modal
@@ -487,12 +835,26 @@ class DailyRoutineApp {
             if (e.target === historyModal) this.closeModal('historyModal');
         });
 
-        historyForm.addEventListener('submit', (e) => {
+        historyForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            this.saveHistoryEntry();
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+            
+            try {
+                await this.saveHistoryEntry();
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+            }
         });
 
-        deleteHistoryEntry.addEventListener('click', () => this.deleteHistoryEntry());
+        deleteHistoryEntry.addEventListener('click', async () => {
+            deleteHistoryEntry.disabled = true;
+            try {
+                await this.deleteHistoryEntry();
+            } finally {
+                deleteHistoryEntry.disabled = false;
+            }
+        });
 
         // Import/Export Modal
         const importExportModal = document.getElementById('importExportModal');
@@ -601,11 +963,13 @@ class DailyRoutineApp {
             this.renderSchedule();
         } else if (screenName === 'routine') {
             this.showCurrentActivity();
+        } else if (screenName === 'settings') {
+            this.updateSettingsScreen();
         }
     }
 
     // Routine Screen Logic
-    showCurrentActivity() {
+    async showCurrentActivity() {
         const todayActivities = this.getTodayActivities();
         
         if (todayActivities.length === 0) {
@@ -628,7 +992,7 @@ class DailyRoutineApp {
         }
         document.getElementById('activityMeta').textContent = metaText;
 
-        this.saveData();
+        await this.saveData();
     }
 
     getTodayActivities() {
@@ -639,7 +1003,7 @@ class DailyRoutineApp {
         );
     }
 
-    completeActivity() {
+    async completeActivity() {
         const todayActivities = this.getTodayActivities();
         if (todayActivities.length === 0) return;
 
@@ -653,10 +1017,10 @@ class DailyRoutineApp {
             skipped: false
         });
 
-        this.nextActivity();
+        await this.nextActivity();
     }
 
-    skipActivity() {
+    async skipActivity() {
         const todayActivities = this.getTodayActivities();
         if (todayActivities.length === 0) return;
 
@@ -670,14 +1034,14 @@ class DailyRoutineApp {
             skipped: true
         });
 
-        this.nextActivity();
+        await this.nextActivity();
     }
 
-    nextActivity() {
+    async nextActivity() {
         const todayActivities = this.getTodayActivities();
         this.currentActivityIndex = (this.currentActivityIndex + 1) % todayActivities.length;
         this.showCurrentActivity();
-        this.saveData();
+        await this.saveData();
     }
 
     // Schedule Management
@@ -732,18 +1096,18 @@ class DailyRoutineApp {
             e.preventDefault();
         });
 
-        item.addEventListener('drop', (e) => {
+        item.addEventListener('drop', async (e) => {
             e.preventDefault();
             const draggedIndex = parseInt(e.dataTransfer.getData('text/plain'));
             const targetIndex = index;
             
             if (draggedIndex !== targetIndex && !this.activities[targetIndex].locked) {
-                this.reorderActivities(draggedIndex, targetIndex);
+                await this.reorderActivities(draggedIndex, targetIndex);
             }
         });
     }
 
-    reorderActivities(fromIndex, toIndex) {
+    async reorderActivities(fromIndex, toIndex) {
         // Don't allow reordering the locked "Wake Up" item
         if (this.activities[fromIndex].locked || this.activities[toIndex].locked) {
             return;
@@ -752,7 +1116,7 @@ class DailyRoutineApp {
         const item = this.activities.splice(fromIndex, 1)[0];
         this.activities.splice(toIndex, 0, item);
         
-        this.saveData();
+        await this.saveData();
         this.renderSchedule();
     }
 
@@ -775,12 +1139,12 @@ class DailyRoutineApp {
         this.showModal('editModal');
     }
 
-    deleteActivity(index) {
+    async deleteActivity(index) {
         if (this.activities[index].locked) return;
         
         if (confirm('Are you sure you want to delete this activity?')) {
             this.activities.splice(index, 1);
-            this.saveData();
+            await this.saveData();
             this.renderSchedule();
         }
     }
@@ -801,7 +1165,7 @@ class DailyRoutineApp {
         this.showModal('editModal');
     }
 
-    saveActivity() {
+    async saveActivity() {
         const name = document.getElementById('activityName').value.trim();
         if (!name) return;
 
@@ -833,7 +1197,7 @@ class DailyRoutineApp {
             this.activities.push(activityData);
         }
 
-        this.saveData();
+        await this.saveData();
         this.renderSchedule();
         this.closeModal('editModal');
     }
@@ -884,7 +1248,7 @@ class DailyRoutineApp {
         this.showModal('historyModal');
     }
 
-    saveHistoryEntry() {
+    async saveHistoryEntry() {
         if (this.currentEditingHistory === null) return;
 
         const timestamp = document.getElementById('historyTimestamp').value;
@@ -896,26 +1260,26 @@ class DailyRoutineApp {
             skipped
         };
 
-        this.saveData();
+        await this.saveData();
         this.renderHistory();
         this.closeModal('historyModal');
     }
 
-    deleteHistoryEntry() {
+    async deleteHistoryEntry() {
         if (this.currentEditingHistory === null) return;
 
         if (confirm('Are you sure you want to delete this history entry?')) {
             this.history.splice(this.currentEditingHistory, 1);
-            this.saveData();
+            await this.saveData();
             this.renderHistory();
             this.closeModal('historyModal');
         }
     }
 
-    clearHistory() {
+    async clearHistory() {
         if (confirm('Are you sure you want to clear all history? This cannot be undone.')) {
             this.history = [];
-            this.saveData();
+            await this.saveData();
             this.renderHistory();
         }
     }
@@ -1209,6 +1573,21 @@ class DailyRoutineApp {
     updateUI() {
         // This method can be used to update any global UI elements
         // Currently not needed, but kept for future enhancements
+    }
+
+    showError(message, type = 'error') {
+        // Implement your error display logic
+        console.log(`[${type.toUpperCase()}] ${message}`);
+        
+        // For now, use alert but you could implement a toast notification
+        if (type === 'error') {
+            alert(`Error: ${message}`);
+        } else if (type === 'success') {
+            console.log(`Success: ${message}`);
+            // Could show a success toast instead of alert
+        } else if (type === 'info') {
+            alert(`Info: ${message}`);
+        }
     }
 }
 

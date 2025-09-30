@@ -88,12 +88,36 @@
             <div class="settings-container">
                 <h2>Settings</h2>
                 <div class="settings-content">
-                    <p>Settings coming soon...</p>
-                    <div class="setting-item">
-                        <label>
-                            <input type="checkbox" id="soundToggle" checked>
-                            Sound Effects
-                        </label>
+                    <div class="setting-section">
+                        <h3>Google Sheets Integration</h3>
+                        <div class="setting-item">
+                            <label>Status:</label>
+                            <span id="googleSheetsStatus">Checking...</span>
+                        </div>
+                        <div class="setting-item" id="spreadsheetInfo" style="display: none;">
+                            <label>Spreadsheet:</label>
+                            <a id="spreadsheetLink" href="#" target="_blank">View Spreadsheet</a>
+                        </div>
+                        <div class="setting-item">
+                            <button id="refreshConnection" class="btn-secondary">Refresh Connection</button>
+                            <button id="clearApiKey" class="btn-secondary">Clear API Key</button>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-section">
+                        <h3>App Settings</h3>
+                        <div class="setting-item">
+                            <label>
+                                <input type="checkbox" id="soundToggle" checked>
+                                Sound Effects
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-section">
+                        <h3>Debug Information</h3>
+                        <button id="showDebugInfo" class="btn-secondary">Show Debug Info</button>
+                        <pre id="debugInfo" style="display: none; background: #f5f5f5; padding: 10px; border-radius: 5px; font-size: 12px; overflow-x: auto;"></pre>
                     </div>
                 </div>
             </div>
@@ -208,6 +232,17 @@
         </div>
     </div>
 
+    <!-- Google API library -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    
+    <!-- Google Sheets integration files -->
+    <script src="config.js"></script>
+    <script src="storage-helper.js"></script>
+    <script src="home-secrets-client.js"></script>
+    <script src="google-sheets-api.js"></script>
+    <script src="spreadsheet-manager.js"></script>
+    
+    <!-- Main app file -->
     <script src="app.js"></script>
 </body>
 </html>

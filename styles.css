@@ -590,6 +590,58 @@ body {
     transform: scale(1.2);
 }
 
+.setting-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.setting-section:last-child {
+    border-bottom: none;
+}
+
+.setting-section h3 {
+    color: var(--text-color);
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.setting-item:last-child {
+    border-bottom: none;
+}
+
+.setting-item label {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.setting-item span {
+    font-weight: 600;
+}
+
+.setting-item button {
+    margin-left: 10px;
+}
+
+.setting-item a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.setting-item a:hover {
+    text-decoration: underline;
+}
+
 /* Modal Styles */
 .modal {
     display: none;
