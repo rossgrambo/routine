@@ -1,7 +1,7 @@
 const CONFIG = {
     // Home Secrets Service Configuration
     HOME_SECRETS: {
-        BASE_URL: 'https://secretserver.local', // Your Home Secrets Server URL
+        HOST: 'secretserver.local', // Your Home Secrets Server hostname (protocol will be auto-detected)
     },
     
     // Your application's spreadsheet configuration

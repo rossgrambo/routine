@@ -9,8 +9,10 @@ class HomeSecretsClient {
 
     async initialize(config) {
         try {
-            this.baseUrl = config.BASE_URL;
-            console.log('Safari - initializing with base URL:', this.baseUrl);
+            // Dynamically build base URL using current page's protocol
+            const currentProtocol = window.location.protocol; // 'http:' or 'https:'
+            this.baseUrl = `${currentProtocol}//${config.HOST}`;
+            console.log('Safari - initializing with dynamic base URL:', this.baseUrl);
             
             // Safari compatibility check
             if (typeof fetch === 'undefined') {
@@ -19,12 +21,13 @@ class HomeSecretsClient {
             
             // Check if base URL is accessible (basic connectivity test)
             try {
-                console.log('Safari - testing base URL connectivity...');
+                console.log('Safari - testing dynamic base URL connectivity...');
                 const testUrl = new URL(this.baseUrl);
-                console.log('Safari - parsed URL components:', {
+                console.log('Safari - parsed URL components (auto-protocol):', {
                     protocol: testUrl.protocol,
                     hostname: testUrl.hostname,
-                    port: testUrl.port
+                    port: testUrl.port,
+                    detectedFromPage: currentProtocol
                 });
             } catch (urlError) {
                 console.error('Safari - URL parsing error:', urlError);
@@ -39,6 +42,8 @@ class HomeSecretsClient {
                 fromUrl: !!urlApiKey,
                 fromStorage: !!storedApiKey
             });
+
+
             
             if (urlApiKey) {
                 this.apiKey = urlApiKey;
@@ -107,129 +112,125 @@ class HomeSecretsClient {
     // Safari/iOS connectivity pre-check
     async safariConnectivityCheck() {
         try {
-            this.showDebugMessage('Testing network connectivity...', 'info');
-            
-            // Try a simple fetch to the base domain
             const testController = new AbortController();
             const testTimeoutId = setTimeout(() => testController.abort(), 5000);
             
-            const testResponse = await fetch(this.baseUrl, {
-                method: 'HEAD',
-                signal: testController.signal,
-                mode: 'no-cors', // Less restrictive for connectivity test
-                cache: 'no-cache'
-            });
-            
-            clearTimeout(testTimeoutId);
-            this.showDebugMessage('Network connectivity OK', 'success');
+            try {
+                const testResponse = await fetch(this.baseUrl, {
+                    method: 'HEAD',
+                    signal: testController.signal,
+                    mode: 'no-cors',
+                    cache: 'no-cache'
+                });
+                clearTimeout(testTimeoutId);
+                console.log('Connectivity check passed');
+            } catch (basicError) {
+                clearTimeout(testTimeoutId);
+                
+                // Check if this is likely a self-signed certificate issue
+                if (this.baseUrl.startsWith('https://') && basicError.message.includes('Load failed')) {
+                    console.log('Self-signed certificate issue detected');
+                    this.showSelfSignedCertificateHelper();
+                }
+                
+                // Try HTTP fallback if we're on HTTPS
+                if (this.baseUrl.startsWith('https://')) {
+                    try {
+                        const httpUrl = this.baseUrl.replace('https://', 'http://');
+                        console.log('Trying HTTP fallback:', httpUrl);
+                        
+                        const httpResponse = await fetch(httpUrl, {
+                            method: 'HEAD',
+                            mode: 'no-cors',
+                            cache: 'no-cache'
+                        });
+                        console.log('HTTP fallback successful');
+                        this.baseUrl = httpUrl;
+                        return;
+                        
+                    } catch (httpError) {
+                        console.warn('HTTP fallback also failed:', httpError.message);
+                    }
+                }
+                
+                throw basicError;
+            }
             
         } catch (connectError) {
-            console.warn('Connectivity check failed:', connectError);
-            if (connectError.name === 'AbortError') {
-                this.showDebugMessage('Network timeout - slow connection detected', 'warning');
-            } else {
-                this.showDebugMessage(`Network issue: ${connectError.message}`, 'warning');
-            }
-            // Don't throw - this is just a pre-check
+            console.warn('Connectivity check failed:', connectError.message);
         }
     }
 
-    // Show debug messages in the UI for iOS testing
+    // Helper for self-signed certificate issues
+    showSelfSignedCertificateHelper() {
+        console.log('Self-signed certificate detected - showing helper');
+        
+        // Create a simple notification for certificate issues only
+        let certHelper = document.getElementById('cert-helper');
+        if (!certHelper) {
+            certHelper = document.createElement('div');
+            certHelper.id = 'cert-helper';
+            certHelper.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #ff9500;
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 10000;
+                max-width: 300px;
+                text-align: center;
+                font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            `;
+            
+            certHelper.innerHTML = `
+                <div style="margin-bottom: 10px; font-weight: bold;">🔒 Certificate Required</div>
+                <div style="margin-bottom: 10px; font-size: 14px;">Safari needs you to accept the security certificate first.</div>
+                <a href="${this.baseUrl}" target="_blank" style="
+                    display: inline-block;
+                    background: white;
+                    color: #ff9500;
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                    text-decoration: none;
+                    font-weight: bold;
+                    margin-bottom: 10px;
+                ">Accept Certificate</a>
+                <div style="font-size: 12px; opacity: 0.9;">Then refresh this page</div>
+                <button onclick="this.parentNode.remove()" style="
+                    position: absolute;
+                    top: 5px;
+                    right: 8px;
+                    background: none;
+                    border: none;
+                    color: white;
+                    font-size: 18px;
+                    cursor: pointer;
+                ">×</button>
+            `;
+            
+            document.body.appendChild(certHelper);
+            
+            // Auto-remove after 15 seconds
+            setTimeout(() => {
+                if (certHelper.parentNode) {
+                    certHelper.parentNode.removeChild(certHelper);
+                }
+            }, 15000);
+        }
+    }
+
+    // Show debug messages (console only, UI for cert issues)
     showDebugMessage(message, type = 'info') {
         console.log(`[${type.toUpperCase()}] ${message}`);
-        
-        // Also show in UI for iOS debugging
-        let debugContainer = document.getElementById('ios-debug-messages');
-        if (!debugContainer) {
-            debugContainer = document.createElement('div');
-            debugContainer.id = 'ios-debug-messages';
-            debugContainer.style.cssText = `
-                position: fixed;
-                top: 10px;
-                right: 10px;
-                max-width: 300px;
-                z-index: 10000;
-                font-family: monospace;
-                font-size: 12px;
-                background: rgba(0,0,0,0.9);
-                color: white;
-                padding: 10px;
-                border-radius: 5px;
-                max-height: 200px;
-                overflow-y: auto;
-                display: block;
-            `;
-            
-            // Add a toggle button
-            const toggleButton = document.createElement('button');
-            toggleButton.textContent = '×';
-            toggleButton.style.cssText = `
-                position: absolute;
-                top: 2px;
-                right: 5px;
-                background: none;
-                border: none;
-                color: white;
-                font-size: 16px;
-                cursor: pointer;
-                width: 20px;
-                height: 20px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            `;
-            toggleButton.onclick = () => {
-                if (debugContainer.style.display === 'none') {
-                    debugContainer.style.display = 'block';
-                    toggleButton.textContent = '×';
-                } else {
-                    debugContainer.style.display = 'none';
-                    toggleButton.textContent = '?';
-                    toggleButton.style.cssText += 'background: rgba(0,0,0,0.9); border-radius: 50%;';
-                }
-            };
-            
-            debugContainer.appendChild(toggleButton);
-            document.body.appendChild(debugContainer);
-        }
-        
-        const timestamp = new Date().toLocaleTimeString();
-        const colorMap = {
-            info: '#17a2b8',
-            success: '#28a745',
-            warning: '#ffc107',
-            error: '#dc3545'
-        };
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.style.cssText = `
-            color: ${colorMap[type] || '#ffffff'};
-            margin: 2px 0;
-            word-wrap: break-word;
-        `;
-        messageDiv.textContent = `${timestamp}: ${message}`;
-        
-        debugContainer.appendChild(messageDiv);
-        
-        // Keep only last 10 messages
-        while (debugContainer.children.length > 10) {
-            debugContainer.removeChild(debugContainer.firstChild);
-        }
-        
-        // Auto-hide success messages after 3 seconds
-        if (type === 'success') {
-            setTimeout(() => {
-                if (messageDiv.parentNode) {
-                    messageDiv.parentNode.removeChild(messageDiv);
-                }
-            }, 3000);
-        }
     }
 
     async checkTokenValidity() {
         try {
             console.log('Checking token validity with Home Secrets service...');
-            this.showDebugMessage('Checking token validity...', 'info');
             
             if (!this.apiKey) {
                 throw new Error('No API key available');
@@ -238,7 +239,6 @@ class HomeSecretsClient {
             // Build token URL with API key
             const tokenUrl = `${this.baseUrl}/oauth/google/token?api-key=${encodeURIComponent(this.apiKey)}`;
             console.log('Token URL (masked):', tokenUrl.replace(/api-key=[^&]*/, 'api-key=***'));
-            this.showDebugMessage('Making token request...', 'info');
             
             // Safari-compatible fetch with timeout and error handling
             const controller = new AbortController();
@@ -261,14 +261,11 @@ class HomeSecretsClient {
                     cache: 'no-cache'
                 });
                 
-                console.log('Safari fetch - response received:', {
+                console.log('Response received:', {
                     status: response.status,
                     statusText: response.statusText,
-                    ok: response.ok,
-                    headers: Object.fromEntries(response.headers.entries())
+                    ok: response.ok
                 });
-                
-                this.showDebugMessage(`Response: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
                 
             } catch (fetchError) {
                 clearTimeout(timeoutId);
@@ -278,7 +275,7 @@ class HomeSecretsClient {
                     stack: fetchError.stack
                 });
                 
-                this.showDebugMessage(`Fetch error: ${fetchError.name} - ${fetchError.message}`, 'error');
+
                 
                 if (fetchError.name === 'AbortError') {
                     throw new Error('Request timeout - please check your internet connection');
@@ -334,7 +331,7 @@ class HomeSecretsClient {
             
             if (tokenData.access_token) {
                 this.accessToken = tokenData.access_token;
-                this.showDebugMessage('✅ Token received successfully', 'success');
+
                 
                 // Set expiry time (Safari date parsing compatibility)
                 if (tokenData.expiry) {
@@ -354,7 +351,7 @@ class HomeSecretsClient {
                     } catch (dateError) {
                         console.warn('Date parsing error, using default expiry:', dateError);
                         this.tokenExpiryTime = Date.now() + (3600 * 1000);
-                        this.showDebugMessage('Date parsing issue, using 1hr expiry', 'warning');
+
                     }
                 } else {
                     // Default to 1 hour from now if no expiry provided
@@ -369,7 +366,6 @@ class HomeSecretsClient {
             
         } catch (error) {
             console.error('Error checking token validity:', error);
-            this.showDebugMessage(`❌ Token check failed: ${error.message}`, 'error');
             
             // Clear stored token data on error
             this.accessToken = null;

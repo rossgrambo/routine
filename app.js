@@ -123,26 +123,20 @@ class DailyRoutineApp {
             
             if (!hasApiKey) {
                 console.log('No API key found, using offline mode');
-                this.showStatusMessage('No API key - running offline', 'info');
                 this.useOfflineMode = true;
                 this.isGoogleSheetsEnabled = false;
                 return false;
             }
             
-            this.showStatusMessage('API key found - initializing...', 'info');
-            
             // Initialize Google Sheets API
-            this.showStatusMessage('Initializing Sheets API...', 'info');
             await sheetsAPI.initialize();
             
             // Initialize Spreadsheet Manager
-            this.showStatusMessage('Setting up spreadsheet...', 'info');
             await spreadsheetManager.initialize();
             
             this.isGoogleSheetsEnabled = true;
             this.useOfflineMode = false;
             console.log('Google Sheets integration initialized successfully');
-            this.showStatusMessage('✅ Google Sheets connected', 'success');
             
             return true;
             
@@ -153,18 +147,8 @@ class DailyRoutineApp {
             
             // Show user-friendly message
             this.showConnectionError(error.message);
-            this.showStatusMessage(`❌ Sheets init failed: ${error.message}`, 'error');
             
             return false;
-        }
-    }
-
-    // Simple status message function that uses homeSecretsClient if available
-    showStatusMessage(message, type = 'info') {
-        if (typeof homeSecretsClient !== 'undefined' && homeSecretsClient.showDebugMessage) {
-            homeSecretsClient.showDebugMessage(message, type);
-        } else {
-            console.log(`[STATUS] ${message}`);
         }
     }
 
@@ -1707,20 +1691,19 @@ class DailyRoutineApp {
     }
 }
 
+// Unregister any existing service worker that might be causing issues
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (let registration of registrations) {
+            registration.unregister().then(function(boolean) {
+                console.log('Service worker unregistered:', boolean);
+            });
+        }
+    });
+}
+
 // Initialize the app when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.app = new DailyRoutineApp();
 });
 
-// Service Worker registration for PWA functionality
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-            .then(registration => {
-                console.log('SW registered: ', registration);
-            })
-            .catch(registrationError => {
-                console.log('SW registration failed: ', registrationError);
-            });
-    });
-}

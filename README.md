@@ -70,7 +70,6 @@ cordova build
 - `styles.css` - All styles with mobile-first responsive design
 - `app.js` - Main application logic and state management
 - `manifest.json` - PWA manifest for app installation
-- `sw.js` - Service worker for offline functionality
 
 ## Default Activities
 
