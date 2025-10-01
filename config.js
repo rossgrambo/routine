@@ -1,7 +1,7 @@
 const CONFIG = {
     // Home Secrets Service Configuration
     HOME_SECRETS: {
-        HOST: 'secretserver.local', // Your Home Secrets Server hostname (protocol will be auto-detected)
+        HOST: 'localsecrets.rossgrambo.com', // Your Home Secrets Server hostname (protocol will be auto-detected)
     },
     
     // Your application's spreadsheet configuration
