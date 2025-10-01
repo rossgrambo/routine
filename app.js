@@ -35,6 +35,9 @@ class DailyRoutineApp {
             await this.loadData();
             this.initializeDefaultActivities();
             
+            // Advance past activities that have already been completed today
+            this.advancePastCompletedActivities();
+            
             this.hideInitializing();
             
             // Check for widget view mode (Safari-compatible)
@@ -158,12 +161,47 @@ class DailyRoutineApp {
     showInitializing() {
         // Show loading state
         console.log('App initializing...');
-        // You could show a loading overlay here
+        
+        // Hide the activity card and buttons during initialization
+        const activityCard = document.querySelector('.activity-card');
+        const doneBtn = document.getElementById('doneBtn');
+        const skipBtn = document.getElementById('skipBtn');
+        const activityContainer = document.querySelector('.activity-container');
+        
+        if (activityCard) activityCard.style.display = 'none';
+        if (doneBtn) doneBtn.style.display = 'none';
+        if (skipBtn) skipBtn.style.display = 'none';
+        
+        // Create and show loading spinner
+        if (activityContainer && !document.querySelector('.loading-spinner')) {
+            const spinner = document.createElement('div');
+            spinner.className = 'loading-spinner';
+            spinner.innerHTML = `
+                <div class="spinner"></div>
+                <p class="loading-text">Loading your routine...</p>
+            `;
+            activityContainer.appendChild(spinner);
+        }
     }
 
     hideInitializing() {
         // Hide loading state
         console.log('App initialization complete');
+        
+        // Remove loading spinner
+        const spinner = document.querySelector('.loading-spinner');
+        if (spinner) {
+            spinner.remove();
+        }
+        
+        // Show the activity card and buttons after initialization
+        const activityCard = document.querySelector('.activity-card');
+        const doneBtn = document.getElementById('doneBtn');
+        const skipBtn = document.getElementById('skipBtn');
+        
+        if (activityCard) activityCard.style.display = 'block';
+        if (doneBtn) doneBtn.style.display = 'block';
+        if (skipBtn) skipBtn.style.display = 'block';
     }
 
     handleInitializationError(error) {
@@ -174,6 +212,21 @@ class DailyRoutineApp {
         // Load data from localStorage as fallback
         this.loadDataFromLocalStorage();
         this.initializeDefaultActivities();
+        
+        // Remove loading spinner
+        const spinner = document.querySelector('.loading-spinner');
+        if (spinner) {
+            spinner.remove();
+        }
+        
+        // Show the activity card and buttons for offline mode
+        const activityCard = document.querySelector('.activity-card');
+        const doneBtn = document.getElementById('doneBtn');
+        const skipBtn = document.getElementById('skipBtn');
+        
+        if (activityCard) activityCard.style.display = 'block';
+        if (doneBtn) doneBtn.style.display = 'block';
+        if (skipBtn) skipBtn.style.display = 'block';
         
         // Continue with normal app initialization
         if (!this.isWidgetMode()) {
@@ -525,6 +578,9 @@ class DailyRoutineApp {
 
         const currentActivity = todayActivities[this.currentActivityIndex];
         
+        // Mark that user has made edits (completing an activity counts as an edit)
+        this.userHasMadeEdits = true;
+        
         // Add to history
         this.history.unshift({
             id: Date.now(),
@@ -555,6 +611,9 @@ class DailyRoutineApp {
         if (todayActivities.length === 0) return;
 
         const currentActivity = todayActivities[this.currentActivityIndex];
+        
+        // Mark that user has made edits (completing an activity counts as an edit)
+        this.userHasMadeEdits = true;
         
         // Add to history
         this.history.unshift({
@@ -796,6 +855,51 @@ class DailyRoutineApp {
                 }
             ];
             // Don't auto-save defaults - only save when user makes actual edits
+        }
+    }
+    
+    advancePastCompletedActivities() {
+        const todayActivities = this.getTodayActivities();
+        if (todayActivities.length === 0) return;
+        
+        // Get today's date in YYYY-MM-DD format for comparison
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Find all activities completed today (not skipped)
+        const completedTodayActivities = this.history.filter(entry => {
+            const entryDate = new Date(entry.timestamp).toISOString().split('T')[0];
+            return entryDate === today && !entry.skipped;
+        }).map(entry => entry.activityName);
+        
+        if (completedTodayActivities.length === 0) {
+            // No activities completed today, start from the beginning or current position
+            return;
+        }
+        
+        console.log(`Found ${completedTodayActivities.length} activities completed today:`, completedTodayActivities);
+        
+        // Starting from the current activity index, find the next activity that hasn't been completed today
+        let advancedIndex = this.currentActivityIndex;
+        let checkedCount = 0;
+        
+        while (checkedCount < todayActivities.length) {
+            const currentActivity = todayActivities[advancedIndex];
+            
+            // If this activity hasn't been completed today, stop here
+            if (!completedTodayActivities.includes(currentActivity.name)) {
+                break;
+            }
+            
+            // Move to next activity
+            advancedIndex = (advancedIndex + 1) % todayActivities.length;
+            checkedCount++;
+        }
+        
+        // If we advanced the index, update it and save
+        if (advancedIndex !== this.currentActivityIndex) {
+            const oldIndex = this.currentActivityIndex;
+            this.currentActivityIndex = advancedIndex;
+            console.log(`Advanced from activity index ${oldIndex} to ${advancedIndex} (skipping completed activities)`);
         }
     }
 
@@ -1081,6 +1185,9 @@ class DailyRoutineApp {
 
         const currentActivity = todayActivities[this.currentActivityIndex];
         
+        // Mark that user has made edits (completing an activity counts as an edit)
+        this.userHasMadeEdits = true;
+        
         // Add to history
         this.history.unshift({
             id: Date.now(),
@@ -1097,6 +1204,9 @@ class DailyRoutineApp {
         if (todayActivities.length === 0) return;
 
         const currentActivity = todayActivities[this.currentActivityIndex];
+        
+        // Mark that user has made edits (skipping an activity counts as an edit)
+        this.userHasMadeEdits = true;
         
         // Add to history as skipped
         this.history.unshift({
