@@ -14,6 +14,9 @@ class DailyRoutineApp {
         this.isInitializing = false;
         this.useOfflineMode = false;
         
+        // Flag to prevent auto-saving until user makes actual edits
+        this.userHasMadeEdits = false;
+        
         this.init();
     }
 
@@ -642,22 +645,13 @@ class DailyRoutineApp {
     }
 
     loadDataFromLocalStorage() {
-        console.log('Loading data from localStorage...');
+        console.log('Loading data from localStorage (history and index only)...');
         
         try {
-            // Use Safari-safe storage methods
-            const savedActivities = StorageHelper.safariSafeGetItem('dailyRoutine_activities');
+            // Only load history and current index from localStorage
+            // Activities should come from server or defaults only
             const savedHistory = StorageHelper.safariSafeGetItem('dailyRoutine_history');
             const savedIndex = StorageHelper.safariSafeGetItem('dailyRoutine_currentIndex');
-
-            if (savedActivities) {
-                try {
-                    this.activities = JSON.parse(savedActivities);
-                } catch (parseError) {
-                    console.warn('Failed to parse activities from storage:', parseError);
-                    this.activities = [];
-                }
-            }
 
             if (savedHistory) {
                 try {
@@ -672,17 +666,23 @@ class DailyRoutineApp {
                 this.currentActivityIndex = parseInt(savedIndex) || 0;
             }
             
-            console.log(`Loaded ${this.activities.length} activities, ${this.history.length} history entries from storage`);
+            console.log(`Loaded ${this.history.length} history entries from storage (activities come from server)`);
         } catch (error) {
             console.error('Failed to load data from localStorage (Safari compatibility issue):', error);
             // Initialize with empty data if loading fails
-            this.activities = [];
             this.history = [];
             this.currentActivityIndex = 0;
         }
     }
 
     async saveData() {
+        // Don't save activities until user has made actual edits
+        // This prevents overriding server data with defaults
+        if (!this.userHasMadeEdits && this.isGoogleSheetsEnabled) {
+            console.log('Skipping save - user has not made edits yet');
+            return;
+        }
+        
         if (this.isGoogleSheetsEnabled && !this.useOfflineMode) {
             return await this.saveDataToGoogleSheets();
         } else {
@@ -717,8 +717,8 @@ class DailyRoutineApp {
 
     saveDataToLocalStorage() {
         try {
-            // Use Safari-safe storage methods
-            StorageHelper.safariSafeSetItem('dailyRoutine_activities', JSON.stringify(this.activities));
+            // Only save history and current index to localStorage
+            // Activities are managed by server only
             StorageHelper.safariSafeSetItem('dailyRoutine_history', JSON.stringify(this.history));
             StorageHelper.safariSafeSetItem('dailyRoutine_currentIndex', this.currentActivityIndex.toString());
         } catch (error) {
@@ -729,6 +729,7 @@ class DailyRoutineApp {
 
     initializeDefaultActivities() {
         if (this.activities.length === 0) {
+            console.log('Initializing default activities (will not auto-save)');
             this.activities = [
                 { 
                     id: 1, 
@@ -794,7 +795,7 @@ class DailyRoutineApp {
                     time: '22:00' 
                 }
             ];
-            this.saveData();
+            // Don't auto-save defaults - only save when user makes actual edits
         }
     }
 
@@ -1184,6 +1185,9 @@ class DailyRoutineApp {
             return;
         }
 
+        // Mark that user has made edits
+        this.userHasMadeEdits = true;
+        
         const item = this.activities.splice(fromIndex, 1)[0];
         this.activities.splice(toIndex, 0, item);
         
@@ -1214,6 +1218,9 @@ class DailyRoutineApp {
         if (this.activities[index].locked) return;
         
         if (confirm('Are you sure you want to delete this activity?')) {
+            // Mark that user has made edits
+            this.userHasMadeEdits = true;
+            
             this.activities.splice(index, 1);
             await this.saveData();
             this.renderSchedule();
@@ -1256,6 +1263,9 @@ class DailyRoutineApp {
             locked: false
         };
 
+        // Mark that user has made edits
+        this.userHasMadeEdits = true;
+        
         if (this.currentEditingActivity !== null) {
             // Editing existing activity
             this.activities[this.currentEditingActivity] = {
@@ -1528,6 +1538,9 @@ class DailyRoutineApp {
             const validatedActivities = this.validateImportedActivities(importedData);
             
             //if (confirm(`This will replace all ${this.activities.length} existing activities with ${validatedActivities.length} imported activities. Are you sure?`)) {
+                // Mark that user has made edits
+                this.userHasMadeEdits = true;
+                
                 this.activities = validatedActivities;
                 this.currentActivityIndex = 0; // Reset to first activity
                 this.saveData();
