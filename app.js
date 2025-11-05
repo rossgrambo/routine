@@ -43,25 +43,33 @@ class DailyRoutineApp {
             // Check for widget view mode (Safari-compatible)
             if (this.isWidgetMode()) {
                 // Check if we need to complete an activity first
-                let shouldComplete = false;
+                let completeParam = null;
                 try {
                     const urlParams = new URLSearchParams(window.location.search);
-                    shouldComplete = urlParams.get('complete') === 'true';
+                    completeParam = urlParams.get('complete');
                 } catch (urlError) {
                     console.warn('URLSearchParams failed, using fallback:', urlError);
-                    shouldComplete = window.location.search.includes('complete=true');
+                    // Fallback: extract complete parameter manually
+                    const match = window.location.search.match(/complete=([^&]*)/); 
+                    completeParam = match ? decodeURIComponent(match[1]) : null;
                 }
                 
-                if (shouldComplete) {
-                    // Complete the activity without updating the widget view yet
-                    await this.completeActivityWidgetSilent();
-                    // Update URL to remove the complete parameter (Safari-compatible)
-                    try {
-                        const newUrl = new URL(window.location);
-                        newUrl.searchParams.delete('complete');
-                        window.history.replaceState({}, '', newUrl);
-                    } catch (urlError) {
-                        console.warn('URL update failed:', urlError);
+                // Only complete if the URL parameter matches the current activity name
+                if (completeParam) {
+                    const todayActivities = this.getTodayActivities();
+                    const currentActivity = todayActivities.length > 0 ? todayActivities[this.currentActivityIndex] : null;
+                    
+                    if (currentActivity && completeParam === currentActivity.name) {
+                        // Complete the activity without updating the widget view yet
+                        await this.completeActivityWidgetSilent();
+                        // Update URL to remove the complete parameter (Safari-compatible)
+                        try {
+                            const newUrl = new URL(window.location);
+                            newUrl.searchParams.delete('complete');
+                            window.history.replaceState({}, '', newUrl);
+                        } catch (urlError) {
+                            console.warn('URL update failed:', urlError);
+                        }
                     }
                 }
                 
@@ -655,9 +663,9 @@ class DailyRoutineApp {
         }
         document.getElementById('widgetActivityMeta').textContent = metaText;
         
-        // Update the link to include completion parameter
+        // Update the link to include completion parameter with activity name
         const currentUrl = new URL(window.location);
-        currentUrl.searchParams.set('complete', 'true');
+        currentUrl.searchParams.set('complete', currentActivity.name);
         document.getElementById('widgetDoneBtn').href = currentUrl.toString();
     }
 
