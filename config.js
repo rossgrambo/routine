@@ -36,7 +36,7 @@ const CONFIG = {
     DUMMY_DATA: {
         ACTIVITIES: [
             ['ID', 'Name', 'Days', 'Time', 'Locked', 'Created', 'Modified'],
-            ['1', 'Wake Up', 'mon,tue,wed,thu,fri,sat,sun', '', 'TRUE', '2024-01-01', '2024-01-01'],
+            ['1', 'Wake Up (Default)', 'mon,tue,wed,thu,fri,sat,sun', '', 'TRUE', '2024-01-01', '2024-01-01'],
             ['2', 'Brush Teeth', 'mon,tue,wed,thu,fri,sat,sun', '', 'FALSE', '2024-01-01', '2024-01-01'],
             ['3', 'Shower', 'mon,tue,wed,thu,fri,sat,sun', '', 'FALSE', '2024-01-01', '2024-01-01'],
             ['4', 'Get Dressed', 'mon,tue,wed,thu,fri,sat,sun', '', 'FALSE', '2024-01-01', '2024-01-01'],

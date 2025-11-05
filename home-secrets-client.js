@@ -50,21 +50,6 @@ class HomeSecretsClient {
                 StorageHelper.saveApiKey(urlApiKey);
                 console.log('API key provided in URL and saved');
                 
-                // Clean up URL to remove API key for security (Safari-compatible)
-                try {
-                    if (typeof URL !== 'undefined' && typeof URLSearchParams !== 'undefined') {
-                        const url = new URL(window.location.href);
-                        url.searchParams.delete('api-key');
-                        window.history.replaceState({}, '', url.toString());
-                    } else {
-                        // Fallback for Safari URL cleaning
-                        this.safariCleanUrl();
-                    }
-                } catch (urlError) {
-                    console.warn('URL cleaning failed, continuing anyway:', urlError);
-                    // Continue without URL cleaning if it fails
-                }
-                
             } else if (storedApiKey) {
                 this.apiKey = storedApiKey;
                 console.log('Using stored API key');
@@ -90,22 +75,6 @@ class HomeSecretsClient {
             console.error('Error initializing Home Secrets Client:', error);
             this.isInitialized = false;
             throw error;
-        }
-    }
-
-    // Safari-compatible URL cleaning fallback
-    safariCleanUrl() {
-        try {
-            const currentUrl = window.location.href;
-            const cleanUrl = currentUrl.replace(/[?&]api-key=[^&]*(&|$)/, function(match, suffix) {
-                return suffix === '&' ? '&' : '';
-            }).replace(/[?]$/, ''); // Remove trailing ? if it exists
-            
-            if (cleanUrl !== currentUrl) {
-                window.history.replaceState({}, '', cleanUrl);
-            }
-        } catch (e) {
-            console.warn('Safari URL cleaning fallback failed:', e);
         }
     }
 
