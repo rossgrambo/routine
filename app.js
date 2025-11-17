@@ -814,48 +814,55 @@ class DailyRoutineApp {
                 },
                 { 
                     id: 3, 
-                    name: 'Shower', 
+                    name: 'Take Vitamins', 
                     locked: false, 
                     days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], 
                     time: '' 
                 },
                 { 
                     id: 4, 
-                    name: 'Get Dressed', 
+                    name: 'Shower', 
                     locked: false, 
                     days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], 
                     time: '' 
                 },
                 { 
                     id: 5, 
-                    name: 'Eat Breakfast', 
+                    name: 'Get Dressed', 
                     locked: false, 
                     days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], 
                     time: '' 
                 },
                 { 
                     id: 6, 
+                    name: 'Eat Breakfast', 
+                    locked: false, 
+                    days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], 
+                    time: '' 
+                },
+                { 
+                    id: 7, 
                     name: 'Start Work', 
                     locked: false, 
                     days: ['mon', 'tue', 'wed', 'thu', 'fri'], 
                     time: '09:00' 
                 },
                 { 
-                    id: 7, 
+                    id: 8, 
                     name: 'Lunch Break', 
                     locked: false, 
                     days: ['mon', 'tue', 'wed', 'thu', 'fri'], 
                     time: '12:00' 
                 },
                 { 
-                    id: 8, 
+                    id: 9, 
                     name: 'Wrap Up Work', 
                     locked: false, 
                     days: ['mon', 'tue', 'wed', 'thu', 'fri'], 
                     time: '17:00' 
                 },
                 { 
-                    id: 9, 
+                    id: 10, 
                     name: 'Be in Bed', 
                     locked: false, 
                     days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], 

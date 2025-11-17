@@ -11,58 +11,19 @@ A simple, mobile-friendly web app for managing daily routines with guided step-b
 - **Local Storage**: All data saved locally in browser
 - **PWA Ready**: Can be installed as a mobile app
 
+## Use
+
+  - Open https://rossgrambo.github.io/routine/
+    - If you make a google auth token available on your local router at `localsecrets.rossgrambo.com` (by using a real url- we get https in a way that browsers accept), this project will use the token to save your input.
+    - Otherwise- localstorage will be used to save your input.
+  - Edit the Schedule to fit your daily routine.
+  - Open this up throughout your day to ensure you hit all of your expected routine items.
+
 ## Setup
 
 1. Clone this repository
 2. Open `index.html` in a web browser
 3. For mobile app packaging, use Capacitor or Cordova
-
-## Mobile App Packaging
-
-### Using Capacitor
-
-1. Install Capacitor:
-```bash
-npm install @capacitor/core @capacitor/cli
-npx cap init
-```
-
-2. Add platforms:
-```bash
-npx cap add ios
-npx cap add android
-```
-
-3. Copy web assets and sync:
-```bash
-npx cap copy
-npx cap sync
-```
-
-4. Open in native IDE:
-```bash
-npx cap open ios
-npx cap open android
-```
-
-### Using Cordova
-
-1. Install Cordova:
-```bash
-npm install -g cordova
-```
-
-2. Create Cordova project:
-```bash
-cordova create myapp com.example.dailyroutine DailyRoutine
-```
-
-3. Copy files to `www` directory
-4. Add platforms and build:
-```bash
-cordova platform add ios android
-cordova build
-```
 
 ## File Structure
 
@@ -75,19 +36,19 @@ cordova build
 
 1. Wake Up (locked - cannot be edited/deleted)
 2. Brush Teeth
-3. Shower
-4. Get Dressed
-5. Eat Breakfast
-6. Start Work (weekdays only)
-7. Lunch Break (weekdays only)
-8. Wrap Up Work (weekdays only)
-9. Go to Bed
+3. Take vitamins
+4. Shower
+5. Get Dressed
+6. Eat Breakfast
+7. Start Work (weekdays only)
+8. Lunch Break (weekdays only)
+9. Wrap Up Work (weekdays only)
+10. Go to Bed
 
 ## Browser Support
 
 - Modern browsers with ES6+ support
 - Local Storage support required
-- Service Worker support for PWA features
 
 ## License
 

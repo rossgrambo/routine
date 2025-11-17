@@ -38,13 +38,14 @@ const CONFIG = {
             ['ID', 'Name', 'Days', 'Time', 'Locked', 'Created', 'Modified'],
             ['1', 'Wake Up (Default)', 'mon,tue,wed,thu,fri,sat,sun', '', 'TRUE', '2024-01-01', '2024-01-01'],
             ['2', 'Brush Teeth', 'mon,tue,wed,thu,fri,sat,sun', '', 'FALSE', '2024-01-01', '2024-01-01'],
-            ['3', 'Shower', 'mon,tue,wed,thu,fri,sat,sun', '', 'FALSE', '2024-01-01', '2024-01-01'],
-            ['4', 'Get Dressed', 'mon,tue,wed,thu,fri,sat,sun', '', 'FALSE', '2024-01-01', '2024-01-01'],
-            ['5', 'Eat Breakfast', 'mon,tue,wed,thu,fri,sat,sun', '', 'FALSE', '2024-01-01', '2024-01-01'],
-            ['6', 'Start Work', 'mon,tue,wed,thu,fri', '09:00', 'FALSE', '2024-01-01', '2024-01-01'],
-            ['7', 'Lunch Break', 'mon,tue,wed,thu,fri', '12:00', 'FALSE', '2024-01-01', '2024-01-01'],
-            ['8', 'Wrap Up Work', 'mon,tue,wed,thu,fri', '17:00', 'FALSE', '2024-01-01', '2024-01-01'],
-            ['9', 'Be in Bed', 'mon,tue,wed,thu,fri,sat,sun', '22:00', 'FALSE', '2024-01-01', '2024-01-01']
+            ['3', 'Take Vitamins', 'mon,tue,wed,thu,fri,sat,sun', '', 'FALSE', '2024-01-01', '2024-01-01'],
+            ['4', 'Shower', 'mon,tue,wed,thu,fri,sat,sun', '', 'FALSE', '2024-01-01', '2024-01-01'],
+            ['5', 'Get Dressed', 'mon,tue,wed,thu,fri,sat,sun', '', 'FALSE', '2024-01-01', '2024-01-01'],
+            ['6', 'Eat Breakfast', 'mon,tue,wed,thu,fri,sat,sun', '', 'FALSE', '2024-01-01', '2024-01-01'],
+            ['7', 'Start Work', 'mon,tue,wed,thu,fri', '09:00', 'FALSE', '2024-01-01', '2024-01-01'],
+            ['8', 'Lunch Break', 'mon,tue,wed,thu,fri', '12:00', 'FALSE', '2024-01-01', '2024-01-01'],
+            ['9', 'Wrap Up Work', 'mon,tue,wed,thu,fri', '17:00', 'FALSE', '2024-01-01', '2024-01-01'],
+            ['10', 'Be in Bed', 'mon,tue,wed,thu,fri,sat,sun', '22:00', 'FALSE', '2024-01-01', '2024-01-01']
         ],
         HISTORY: [
             ['ID', 'Activity Name', 'Timestamp', 'Skipped', 'Created'],
