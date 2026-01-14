@@ -18,6 +18,7 @@ A simple, mobile-friendly web app for managing daily routines with guided step-b
     - Otherwise- localstorage will be used to save your input.
   - Edit the Schedule to fit your daily routine.
   - Open this up throughout your day to ensure you hit all of your expected routine items.
+  - On iOS- you can use an app like Widget Web to make this display as a widget. Use the url param `?view=widget` for a more concise screen.
 
 ## Setup
 

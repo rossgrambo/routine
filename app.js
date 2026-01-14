@@ -17,6 +17,11 @@ class DailyRoutineApp {
         // Flag to prevent auto-saving until user makes actual edits
         this.userHasMadeEdits = false;
         
+        // Queuing and debouncing for non-widget mode
+        this.pendingChanges = false;
+        this.saveDebounceTimer = null;
+        this.saveDebounceDelay = 5000; // 5 seconds
+        
         this.init();
     }
 
@@ -986,6 +991,21 @@ class DailyRoutineApp {
                 this.closeNav();
             }
         });
+        
+        // Save pending changes before page unload
+        window.addEventListener('beforeunload', () => {
+            if (this.pendingChanges) {
+                // Execute immediate save (synchronous fallback)
+                this.saveDataToLocalStorage();
+            }
+        });
+        
+        // Try to flush pending saves when page is hidden
+        document.addEventListener('visibilitychange', async () => {
+            if (document.hidden && this.pendingChanges) {
+                await this.debouncedSave();
+            }
+        });
     }
 
     setupModalEventListeners() {
@@ -1211,7 +1231,11 @@ class DailyRoutineApp {
             skipped: false
         });
 
-        await this.nextActivity();
+        // Update UI immediately (no await)
+        this.nextActivityInstant();
+        
+        // Queue the save for later (debounced)
+        this.queueSave();
     }
 
     async skipActivity() {
@@ -1231,7 +1255,11 @@ class DailyRoutineApp {
             skipped: true
         });
 
-        await this.nextActivity();
+        // Update UI immediately (no await)
+        this.nextActivityInstant();
+        
+        // Queue the save for later (debounced)
+        this.queueSave();
     }
 
     async nextActivity() {
@@ -1239,6 +1267,105 @@ class DailyRoutineApp {
         this.currentActivityIndex = (this.currentActivityIndex + 1) % todayActivities.length;
         this.showCurrentActivity();
         await this.saveData();
+    }
+
+    nextActivityInstant() {
+        // Instant UI update without awaiting save
+        const todayActivities = this.getTodayActivities();
+        this.currentActivityIndex = (this.currentActivityIndex + 1) % todayActivities.length;
+        this.showCurrentActivity();
+        // Save to localStorage immediately for safety
+        this.saveDataToLocalStorage();
+    }
+
+    // Queuing and debouncing for server saves
+    queueSave() {
+        this.pendingChanges = true;
+        
+        // Show sync indicator
+        this.showSyncIndicator('pending');
+        
+        // Clear existing timer
+        if (this.saveDebounceTimer) {
+            clearTimeout(this.saveDebounceTimer);
+        }
+        
+        // Set new timer to save after delay
+        this.saveDebounceTimer = setTimeout(async () => {
+            await this.debouncedSave();
+        }, this.saveDebounceDelay);
+        
+        console.log(`Save queued - will execute in ${this.saveDebounceDelay}ms`);
+    }
+
+    async debouncedSave() {
+        if (!this.pendingChanges) return;
+        
+        console.log('Executing debounced save...');
+        this.showSyncIndicator('syncing');
+        
+        this.pendingChanges = false;
+        this.saveDebounceTimer = null;
+        
+        try {
+            await this.saveData();
+            console.log('Debounced save completed successfully');
+            this.showSyncIndicator('synced');
+        } catch (error) {
+            console.error('Debounced save failed:', error);
+            this.showSyncIndicator('error');
+            // Re-queue if save fails
+            this.pendingChanges = true;
+            this.queueSave();
+        }
+    }
+
+    showSyncIndicator(status) {
+        // Skip in widget mode
+        if (this.isWidgetMode()) return;
+        
+        let indicator = document.getElementById('syncIndicator');
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'syncIndicator';
+            indicator.style.cssText = `
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                padding: 8px 12px;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: 500;
+                z-index: 10000;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            `;
+            document.body.appendChild(indicator);
+        }
+        
+        const statusConfig = {
+            'pending': { text: '● Pending sync', bg: '#FFA726', color: '#fff' },
+            'syncing': { text: '● Syncing...', bg: '#42A5F5', color: '#fff' },
+            'synced': { text: '✓ Synced', bg: '#66BB6A', color: '#fff' },
+            'error': { text: '✗ Sync error', bg: '#EF5350', color: '#fff' }
+        };
+        
+        const config = statusConfig[status];
+        if (config) {
+            indicator.textContent = config.text;
+            indicator.style.background = config.bg;
+            indicator.style.color = config.color;
+            indicator.style.opacity = '1';
+            indicator.style.transform = 'translateY(0)';
+            
+            // Auto-hide synced/error messages after 3 seconds
+            if (status === 'synced' || status === 'error') {
+                setTimeout(() => {
+                    indicator.style.opacity = '0';
+                    indicator.style.transform = 'translateY(-10px)';
+                }, 3000);
+            }
+        }
     }
 
     // Schedule Management
